@@ -1,0 +1,87 @@
+/* ===========================
+   SECTION
+   Full-bleed dark band so it visually breaks the rhythm of white
+   surface sections around it — a "pause" moment on the page.
+=========================== */
+.quote-section {
+  width: 100%;
+  background: var(--primary-dark);
+  padding: var(--space-8) var(--space-4);
+  box-sizing: border-box;
+
+  display: flex;
+  justify-content: center;
+
+  font-family: var(--font-family);
+}
+
+/* ===========================
+   CARD
+=========================== */
+.quote-card {
+  max-width: 640px;
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.quote-card__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-5);
+}
+
+.quote-card__icon {
+  color: var(--secondary);
+}
+
+.quote-card__text {
+  font-size: var(--text-xl);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-relaxed);
+  color: var(--text-white);
+  margin: 0 0 var(--space-5) 0;
+}
+
+.quote-card__divider {
+  width: 48px;
+  height: 3px;
+  background: var(--secondary);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-4);
+}
+
+.quote-card__author {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.quote-card__label {
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 640px) {
+  .quote-card__text {
+    font-size: var(--text-lg);
+  }
+
+  .quote-section {
+    padding: var(--space-6) var(--space-4);
+  }
+}

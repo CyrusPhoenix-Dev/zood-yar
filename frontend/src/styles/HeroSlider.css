@@ -1,0 +1,189 @@
+/* ===========================
+   CONTAINER
+   Bootstrap-style: centered, max-width capped, padded on small
+   screens so content doesn't touch the viewport edge.
+=========================== */
+.slider-container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+}
+
+/* ===========================
+   SLIDER SHELL
+=========================== */
+.slider {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md);
+  background: var(--surface-hover); /* shows briefly while images load */
+}
+
+/* ===========================
+   TRACK
+   All slides sit in a row; the track itself translates left/right.
+   Forced LTR direction so translateX math is predictable no matter
+   what the surrounding page's dir is set to.
+=========================== */
+.slider__track {
+  direction: ltr;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform var(--transition-slow);
+}
+
+.slider__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+
+  background-size: cover;
+  background-position: center;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* ===========================
+   CAPTION OVERLAY
+   Bottom-center, small text, dark gradient behind it so text stays
+   readable regardless of what's in the image underneath. Caption
+   text itself follows normal document direction (Persian = RTL),
+   independent of the track's forced LTR slide direction.
+=========================== */
+.slider__caption {
+  direction: rtl;
+  width: 100%;
+  padding: var(--space-6) var(--space-4) var(--space-4);
+
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+
+  display: flex;
+  justify-content: center;
+}
+
+.slider__caption-text {
+  margin: 0;
+  max-width: 90%;
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-white);
+  text-align: center;
+}
+
+/* ===========================
+   NAV ARROWS
+=========================== */
+.slider__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: var(--z-dropdown);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+  padding: 0;
+
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  cursor: pointer;
+
+  transition: background var(--transition-fast);
+}
+
+.slider__nav:hover {
+  background: var(--surface);
+}
+
+.slider__nav:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.slider__nav--prev {
+  inset-inline-start: var(--space-3); /* respects RTL/LTR automatically */
+}
+
+.slider__nav--next {
+  inset-inline-end: var(--space-3);
+}
+
+/* ===========================
+   DOTS
+=========================== */
+.slider__dots {
+  position: absolute;
+  bottom: var(--space-3);
+  inset-inline-end: var(--space-3);
+  z-index: var(--z-dropdown);
+
+  display: flex;
+  gap: var(--space-2);
+}
+
+.slider__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+
+  background: rgba(255, 255, 255, 0.6);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+
+  transition: background var(--transition-fast), width var(--transition-fast);
+}
+
+.slider__dot--active {
+  width: 20px;
+  background: var(--text-white);
+}
+
+.slider__dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* ===========================
+   RESPONSIVE
+   Shorter aspect ratio on small screens so the slider doesn't take
+   over the whole viewport height on mobile; arrows shrink slightly.
+=========================== */
+@media (max-width: 768px) {
+  .slider {
+    aspect-ratio: 4 / 3;
+  }
+
+  .slider__caption-text {
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .slider {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-lg); /* slightly smaller radius reads better on narrow cards */
+  }
+
+  .slider__nav {
+    width: 30px;
+    height: 30px;
+  }
+}

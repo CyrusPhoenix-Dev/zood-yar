@@ -1,0 +1,206 @@
+.contact-section {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+.contact-section__inner {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-7);
+}
+
+/* ===========================
+   INFO COLUMN
+=========================== */
+.contact-section__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-section__title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.contact-section__description {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6) 0;
+}
+
+.contact-section__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.contact-section__list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.contact-section__icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+
+  background: var(--primary-light);
+  border-radius: var(--radius-md);
+  color: var(--primary);
+}
+
+.contact-section__list-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-section__list-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.contact-section__list-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+/* ===========================
+   FORM COLUMN
+=========================== */
+.contact-section__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--shadow-sm);
+}
+
+.contact-section__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-section__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.contact-section__input,
+.contact-section__textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.contact-section__input {
+  height: var(--input-height);
+}
+
+.contact-section__textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: var(--leading-normal);
+}
+
+.contact-section__input:hover,
+.contact-section__textarea:hover {
+  border-color: var(--primary);
+}
+
+.contact-section__input:focus-visible,
+.contact-section__textarea:focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.contact-section__error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: 0;
+}
+
+.contact-section__success {
+  font-size: var(--text-sm);
+  color: var(--success);
+  margin: 0;
+}
+
+.contact-section__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--button-height);
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast);
+}
+
+.contact-section__button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.contact-section__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.contact-section__button:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 900px) {
+  .contact-section__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-section__title {
+    font-size: var(--text-2xl);
+  }
+}

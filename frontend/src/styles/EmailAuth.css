@@ -1,0 +1,187 @@
+.email-auth {
+  width: 100%;
+  min-height: 70vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+}
+
+.email-auth__form {
+  width: 100%;
+  max-width: 420px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--shadow-md);
+}
+
+.email-auth__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.email-auth__back:hover {
+  color: var(--primary);
+}
+
+.email-auth__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+.email-auth__description {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+}
+
+.email-auth__description strong {
+  color: var(--text-primary);
+}
+
+.email-auth__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.email-auth__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.email-auth__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.email-auth__input-icon {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.email-auth__input {
+  width: 100%;
+  height: var(--input-height);
+  padding-inline-start: var(--space-8);
+  padding-inline-end: var(--space-4);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.email-auth__input:hover {
+  border-color: var(--primary);
+}
+
+.email-auth__input:focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Code input: centered, spaced-out digits, no icon padding needed */
+.email-auth__input--code {
+  padding-inline-start: var(--space-4);
+  text-align: center;
+  font-size: var(--text-2xl);
+  letter-spacing: 8px;
+  font-weight: var(--font-semibold);
+}
+
+.email-auth__error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: 0;
+  text-align: center;
+}
+
+.email-auth__button {
+  height: var(--button-height);
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast);
+}
+
+.email-auth__button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.email-auth__button:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.email-auth__resend {
+  align-self: center;
+
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.email-auth__resend:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.email-auth__resend:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .email-auth__form {
+    padding: var(--space-5);
+  }
+}

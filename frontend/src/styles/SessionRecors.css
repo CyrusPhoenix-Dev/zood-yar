@@ -1,0 +1,241 @@
+.records-page {
+  width: 70%;
+  max-width: var(--container);
+  margin-right: 300px;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+
+  font-family: var(--font-family);
+}
+
+.records-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) 0;
+}
+
+.records-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--card-padding);
+}
+
+.records-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.records-card__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.records-card__export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--primary);
+
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.records-card__export-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+/* Print-only title is hidden on screen — the header row above
+   (with the title + export button) is what's shown normally. */
+.records-page__print-only {
+  display: none;
+}
+
+/* ===========================
+   TABLE — desktop & tablet
+=========================== */
+.records-table {
+  width: 100%;
+  border-collapse: collapse;
+  display: table;
+}
+
+.records-table th {
+  text-align: start;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.records-table td {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.records-table tr:last-child td {
+  border-bottom: none;
+}
+
+.records-table__doctor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: var(--font-medium);
+}
+
+.records-table__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* ===========================
+   STACKED LIST — phone only
+   Hidden by default; swapped in below 640px instead of the table,
+   since a table forces horizontal scrolling on narrow screens which
+   is a worse experience than a stacked summary per row.
+=========================== */
+.records-list {
+  display: none;
+}
+
+.records-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.records-list__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.records-list__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.records-list__doctor {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.records-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.records-list__label {
+  color: var(--text-muted);
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 900px) {
+  .records-page {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .records-table {
+    display: none;
+  }
+
+  .records-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .records-card {
+    padding: var(--space-4);
+  }
+}
+
+/* ===========================
+   PRINT (used for the PDF export)
+   Hides the sidebar, export button, and mobile card list — the
+   table always prints regardless of the screen size that triggered
+   window.print(), since a printed page has its own fixed width and
+   isn't subject to the app's normal breakpoints.
+=========================== */
+@media print {
+  /* Navbar and Footer are rendered by Layout around every page, not
+     by this component — hiding them here works because your CSS is
+     global (no CSS modules), so a plain class selector reaches them
+     regardless of which file it's declared in. */
+  .navbar,
+  .footer {
+    display: none !important;
+  }
+
+  .records-page__no-print {
+    display: none !important;
+  }
+
+  .records-page__print-only {
+    display: block !important;
+  }
+
+  .records-page {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .records-content {
+    padding: 0;
+  }
+
+  .records-card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .records-table {
+    display: table !important;
+  }
+
+  .records-table th,
+  .records-table td {
+    color: #000;
+    border-bottom: 1px solid #ccc;
+  }
+}

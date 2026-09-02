@@ -1,0 +1,233 @@
+.navbar {
+  width: 100%;
+  font-family: var(--font-family);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+/* ===========================
+   TOP ROW
+=========================== */
+.navbar__top {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.navbar__top-inner {
+  max-width: var(--container);
+  height: var(--navbar-height);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar__logo {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.navbar__auth-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.navbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 var(--space-4);
+
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.navbar__btn--ghost {
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-family: 'vazirmatn';
+}
+
+.navbar__btn--ghost:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.navbar__btn--primary {
+  color: var(--text-white);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.navbar__btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+/* ===========================
+   AVATAR (top row, desktop)
+=========================== */
+.navbar__avatar-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.navbar__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.navbar__avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Small avatar shown inline inside the "پروفایل" button in the
+   mobile dropdown, next to the fallback User icon */
+.navbar__mobile-avatar-img {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+/* Hamburger — hidden on desktop, shown on mobile */
+.navbar__menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.navbar__menu-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ===========================
+   BOTTOM ROW: nav links
+=========================== */
+.navbar__bottom {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+}
+
+.navbar__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+
+  height: 52px;
+}
+
+.navbar__link {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+
+  transition: color var(--transition-fast);
+}
+
+.navbar__link:hover {
+  color: var(--primary);
+}
+
+.navbar__mobile-auth {
+  display: none;
+}
+
+/* ===========================
+   RESPONSIVE
+   Below 768px: hide top-row buttons + link bar, collapse everything
+   into a hamburger-triggered dropdown instead.
+=========================== */
+@media (max-width: 768px) {
+  .navbar__auth-actions {
+    display: none;
+  }
+
+  .navbar__menu-toggle {
+    display: flex;
+  }
+
+  .navbar__bottom {
+    display: none;
+    padding: var(--space-4);
+  }
+
+  .navbar__bottom--open {
+    display: block;
+    border-top: 1px solid var(--border-light);
+  }
+
+  .navbar__links {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    gap: 0;
+  }
+
+  .navbar__links li {
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .navbar__link {
+    display: block;
+    padding: var(--space-3) 0;
+  }
+
+  .navbar__mobile-auth {
+    display: flex;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+  }
+
+  .navbar__mobile-auth .navbar__btn {
+    flex: 1;
+  }
+}

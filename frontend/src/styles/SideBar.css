@@ -1,0 +1,123 @@
+/* ===========================
+   DESKTOP: vertical floating sidebar
+   Doesn't span full page height — margin top/bottom keeps it from
+   touching the navbar above or footer below, and it's sticky so it
+   stays in view while the adjacent content scrolls.
+=========================== */
+.side-nav {
+  width: 240px;
+  flex-shrink: 0;
+
+  position: fixed;
+  top: calc(var(--navbar-height) + var(--space-6));
+  margin: var(--space-6) 10px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-xs);
+
+  font-family: var(--font-family);
+  z-index: 1;
+}
+
+.side-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.side-nav__link {
+  /* Reset button defaults */
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+
+  /* Existing layout */
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+
+  text-decoration: none;
+  text-align: right;
+
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.side-nav__icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.side-nav__link:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.side-nav__link--active {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.side-nav__link--active .side-nav__icon {
+  color: var(--primary);
+}
+
+/* ===========================
+   TABLET & PHONE
+   A floating vertical sidebar wastes width on narrower screens and
+   pushes content down awkwardly. Convert it into a horizontal,
+   scrollable pill-tab row instead — a common, space-efficient
+   pattern for account/settings sub-navigation on small screens.
+=========================== */
+@media (max-width: 900px) {
+  .side-nav {
+    width: 100%;
+    position: static;
+    margin: var(--space-4) 0;
+
+    padding: var(--space-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .side-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .side-nav__list {
+    flex-direction: row;
+    gap: var(--space-2);
+    width: max-content;
+  }
+
+  .side-nav__link {
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4);
+    white-space: nowrap;
+    text-align: center;
+    border-radius: var(--radius-full);
+  }
+}
+
+@media (max-width: 480px) {
+  .side-nav__link span {
+    font-size: var(--text-xs);
+  }
+}

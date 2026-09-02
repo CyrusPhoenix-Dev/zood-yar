@@ -1,0 +1,138 @@
+/* ===========================
+   SECTION CONTAINER
+=========================== */
+.about-stats {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+}
+
+.about-stats__inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-7);
+  align-items: center;
+}
+
+/* ===========================
+   TEXT COLUMN
+=========================== */
+.about-stats__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.about-stats__title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.about-stats__description {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6) 0;
+}
+
+/* ===========================
+   STATS ROW
+=========================== */
+.about-stats__row {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.about-stats__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.about-stats__icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+
+  background: var(--primary-light);
+  border-radius: var(--radius-md);
+}
+
+.about-stats__icon {
+  color: var(--primary);
+}
+
+.about-stats__item-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.about-stats__value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.about-stats__label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ===========================
+   IMAGE COLUMN
+=========================== */
+.about-stats__media {
+  width: 100%;
+}
+
+.about-stats__image {
+  width: 100%;
+  height: 100%;
+  max-height: 420px;
+  object-fit: cover;
+
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md);
+}
+
+/* ===========================
+   RESPONSIVE
+   Below 900px: stack image below text instead of side-by-side.
+=========================== */
+@media (max-width: 900px) {
+  .about-stats__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .about-stats__media {
+    order: -1; /* image first on mobile — leads with visual, then story */
+  }
+
+  .about-stats__image {
+    max-height: 280px;
+  }
+
+  .about-stats__title {
+    font-size: var(--text-2xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .about-stats__row {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}

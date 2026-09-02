@@ -1,0 +1,33 @@
+.contact-page-hero {
+  width: 100%;
+  background: var(--primary-light);
+  padding: var(--space-8) var(--space-4);
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+.contact-page-hero__inner {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.contact-page-hero__title {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.contact-page-hero__subtitle {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .contact-page-hero__title {
+    font-size: var(--text-3xl);
+  }
+}

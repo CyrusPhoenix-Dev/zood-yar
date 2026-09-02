@@ -1,0 +1,301 @@
+.my-profile-page {
+  width: 70%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+  margin-right: 300px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+
+  font-family: var(--font-family);
+}
+
+
+.my-profile-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) 0;
+}
+
+.my-profile-status {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: var(--space-8) 0;
+}
+
+.my-profile-status--error {
+  color: var(--danger);
+}
+
+.my-profile-form-error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: 0 0 var(--space-4) 0;
+}
+
+/* ===========================
+   CARD
+=========================== */
+.my-profile-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--card-padding);
+}
+
+.my-profile-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.my-profile-card__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.my-profile-card__edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast);
+}
+
+.my-profile-card__edit-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.my-profile-card__edit-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* ===========================
+   AVATAR
+=========================== */
+.my-profile-avatar-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.my-profile-avatar {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  background: var(--primary-light);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: default;
+}
+
+.my-profile-avatar--editable {
+  cursor: pointer;
+}
+
+.my-profile-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.my-profile-avatar__icon {
+  color: var(--primary);
+}
+
+.my-profile-avatar__overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text-white);
+  opacity: 0;
+
+  transition: opacity var(--transition-fast);
+}
+
+.my-profile-avatar--editable:hover .my-profile-avatar__overlay {
+  opacity: 1;
+}
+
+.my-profile-avatar__file-input {
+  display: none;
+}
+
+.my-profile-avatar__hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ===========================
+   FIELD GRID
+=========================== */
+.my-profile-card__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.my-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.my-profile-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.my-profile-field__input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+    background var(--transition-fast);
+  
+  text-align: right;
+}
+
+/* Read-only state looks visually distinct from editable — flat,
+   no border emphasis, signals "this isn't clickable text" */
+.my-profile-field__input[readonly] {
+  background: transparent;
+  border-color: transparent;
+  padding-inline-start: 0;
+  color: var(--text-primary);
+  cursor: default;
+  padding: 0;
+}
+
+.my-profile-field__input:not([readonly]):hover {
+  border-color: var(--primary);
+}
+
+.my-profile-field__input:not([readonly]):focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.my-profile-field__input:disabled {
+  opacity: 0.6;
+}
+
+/* Address spans both columns — usually the longest value */
+.my-profile-field:last-child {
+  grid-column: 1 / -1;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 900px) {
+  .my-profile-page {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .my-profile-card__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .my-profile-field:last-child {
+    grid-column: auto;
+  }
+
+  .my-profile-card__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .my-profile-card__edit-btn {
+    justify-content: center;
+  }
+}
+
+/* ===========================
+   PHONE VERIFICATION BADGE
+=========================== */
+.my-profile-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.phone-verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.phone-verify-badge--verified {
+  color: var(--success);
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.phone-verify-badge--unverified {
+  color: var(--danger);
+  background: rgba(231, 111, 81, 0.08);
+}
+
+.phone-verify-badge--pending {
+  color: var(--warning);
+  background: rgba(244, 162, 97, 0.12);
+}

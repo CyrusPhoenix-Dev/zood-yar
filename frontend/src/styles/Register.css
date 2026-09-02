@@ -1,0 +1,172 @@
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  width: 100%;
+  max-width: 460px;
+  margin: 50px auto;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--shadow-md);
+
+  font-family: var(--font-family);
+}
+
+.register-form__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2) 0;
+  text-align: center;
+}
+
+.register-form__row {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.register-form__row .register-form__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.register-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.register-form__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.register-form__input {
+  height: var(--input-height);
+  padding: 0 var(--space-4);
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.register-form__input::placeholder {
+  color: var(--text-muted);
+}
+
+.register-form__input:hover {
+  border-color: var(--primary);
+}
+
+.register-form__input:focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.register-form__input[id="password"], .register-form__input[id="confirmPassword"]{
+  width: 100%;
+  max-width: 380px;
+}
+/* Password field with show/hide toggle button positioned inside it */
+.register-form__password-wrapper {
+  position: relative;
+}
+
+.register-form__password-wrapper .register-form__input {
+  padding-inline-end: var(--space-8); /* room for the toggle button, logical property respects RTL */
+}
+
+.register-form__toggle-visibility {
+  position: absolute;
+  inset-inline-end: var(--space-3); /* right side in LTR, left side in RTL, automatically */
+  top: 50%;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 32px;
+  padding: 0;
+
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.register-form__toggle-visibility:hover {
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+
+.register-form__toggle-visibility:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.register-form__error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: 0;
+  white-space: pre-line
+}
+
+.register-form__button {
+  height: var(--button-height);
+
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast);
+}
+
+.register-form__button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.register-form__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.register-form__button:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* On small screens, stack first/last name instead of side-by-side */
+@media (max-width: 480px) {
+  .register-form__row {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .register-form {
+  width: 200px;
+  }
+  .register-form__input[id="password"], .register-form__input[id="confirmPassword"]{
+  width: 60% !important;
+}
+}

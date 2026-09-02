@@ -1,0 +1,186 @@
+/* ===========================
+   FONTS
+=========================== */
+
+:root {
+  --font-family: "Vazirmatn", "Inter", sans-serif;
+
+  --font-light:300;
+  --font-regular:400;
+  --font-medium:500;
+  --font-semibold:600;
+  --font-bold:700;
+
+  /* ===========================
+      TYPOGRAPHY SCALE
+  =========================== */
+
+  --text-xs:12px;
+  --text-sm:14px;
+  --text-base:16px;
+  --text-lg:18px;
+  --text-xl:20px;
+  --text-2xl:24px;
+  --text-3xl:32px;
+  --text-4xl:40px;
+
+  --leading-tight:1.2;
+  --leading-normal:1.5;
+  --leading-relaxed:1.7;
+
+   /* ===========================
+      COLORS — terracotta + sage
+  =========================== */
+
+  --primary:#B47B5F;              /* warm terracotta/clay */
+  --primary-hover:#96613F;
+  --primary-light:#F9EBE2;
+
+  --secondary:#7C9473;            /* muted sage green */
+  --secondary-hover:#647A5C;
+  --secondary-light:#EEF2EA;
+
+  --accent:#F5DCC6;               /* peachy gold, from the sunset */
+
+  --primary-dark:#4A342A;         /* warm brown-charcoal, dark anchor */
+
+  --success:#4CAF50;
+  --warning:#F4A261;
+  --danger:#E76F51;
+  --info:#4D96FF;
+
+  /* ===========================
+      BACKGROUNDS
+  =========================== */
+
+  --background:#FBF3EC;           /* warm ivory, slightly deeper than before */
+  --surface:#FDF8F3;              /* soft linen instead of pure white */
+  --surface-hover:#F5E9DE;
+
+  /* ===========================
+      TEXT
+  =========================== */
+
+  --text-primary:#4A342A;
+  --text-secondary:#7A6155;
+  --text-muted:#A7907F;
+  --text-white:#FFFFFF;
+
+  /* ===========================
+      BORDER
+  =========================== */
+
+  --border:#E0CBB8;
+  --border-light:#EEDFD1;
+
+  /* ===========================
+      FOCUS / RING
+  =========================== */
+
+  --focus-ring:#B47B5F66;
+  --focus-outline:#B47B5F;
+
+  /* ===========================
+      SHADOWS
+  =========================== */
+
+  --shadow-xs:0 1px 2px rgba(74,52,42,.06);
+  --shadow-sm:0 2px 8px rgba(74,52,42,.10);
+  --shadow-md:0 8px 24px rgba(74,52,42,.10);
+  --shadow-lg:0 16px 40px rgba(74,52,42,.12);
+  /* ===========================
+      BORDER RADIUS
+  =========================== */
+
+  --radius-xs:4px;
+  --radius-sm:8px;
+  --radius-md:12px;
+  --radius-lg:16px;
+  --radius-xl:24px;
+  --radius-full:9999px;
+
+  /* ===========================
+      SPACING
+  =========================== */
+
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+  --space-6:32px;
+  --space-7:48px;
+  --space-8:64px;
+
+  /* ===========================
+      TRANSITIONS
+  =========================== */
+
+  --transition-fast:.15s ease;
+
+  --transition:.25s ease;
+
+  --transition-slow:.4s ease;
+
+  /* ===========================
+      Z INDEX
+  =========================== */
+
+  --z-dropdown:100;
+  --z-sticky:500;
+  --z-modal:1000;
+  --z-toast:1100;
+  --z-tooltip:1200;
+
+  /* ===========================
+      BUTTONS
+  =========================== */
+
+  --button-height:48px;
+  /* uses --radius-md directly now — see components, no separate variable needed */
+
+  /* ===========================
+      INPUTS
+  =========================== */
+
+  --input-height:48px;
+  /* uses --radius-md directly now — see components, no separate variable needed */
+
+  /* ===========================
+      CARDS
+  =========================== */
+
+  --card-radius:16px; /* was 20px — now matches --radius-lg, keeps the scale honest */
+  --card-padding:24px;
+
+  /* ===========================
+      CONTAINER
+  =========================== */
+
+  --container:1280px;
+
+  /* ===========================
+      BREAKPOINTS (reference only — var() doesn't work inside @media,
+      so hardcode these values in your media queries, but keep this
+      comment block as the single source of truth)
+      sm: 640px
+      md: 768px
+      lg: 1024px
+      xl: 1280px
+  =========================== */
+
+  /* ===========================
+      NAVBAR
+  =========================== */
+
+  --navbar-height:72px;
+
+  /* ===========================
+      SIDEBAR
+  =========================== */
+
+  --sidebar-width:280px;
+}
+html, body{
+    margin: 0;
+}
