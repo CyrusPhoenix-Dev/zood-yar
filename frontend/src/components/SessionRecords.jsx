@@ -1,80 +1,39 @@
+import { useState, useEffect } from "react";
 import { Download } from "lucide-react";
+import api from "../api";
+import { translateApiError } from "../utils/apiErrors";
 import "../styles/SessionRecors.css";
 
-// Swap with real data from api.get("/api/user/sessions/") — static for now.
-const sessions = [
-  {
-    id: 1,
-    doctor: "دکتر سید محمد حسینی",
-    avatar: "https://i.pravatar.cc/200?img=12",
-    date: "۱۴۰۴/۰۵/۱۲",
-    time: "۱۰:۳۰",
-    price: "۴۵۰,۰۰۰ تومان",
-    sessionNumber: 1,
-  },
-  {
-    id: 2,
-    doctor: "دکتر سید محمد حسینی",
-    avatar: "https://i.pravatar.cc/200?img=12",
-    date: "۱۴۰۴/۰۵/۱۹",
-    time: "۱۰:۳۰",
-    price: "۴۵۰,۰۰۰ تومان",
-    sessionNumber: 2,
-  },
-  {
-    id: 3,
-    doctor: "دکتر مریم صادقی",
-    avatar: "https://i.pravatar.cc/200?img=32",
-    date: "۱۴۰۴/۰۴/۰۲",
-    time: "۱۷:۰۰",
-    price: "۳۸۰,۰۰۰ تومان",
-    sessionNumber: 1,
-  },
-  {
-    id: 4,
-    doctor: "دکتر مریم صادقی",
-    avatar: "https://i.pravatar.cc/200?img=32",
-    date: "۱۴۰۴/۰۴/۱۶",
-    time: "۱۷:۰۰",
-    price: "۳۸۰,۰۰۰ تومان",
-    sessionNumber: 2,
-  },
-  {
-    id: 5,
-    doctor: "دکتر مریم صادقی",
-    avatar: "https://i.pravatar.cc/200?img=32",
-    date: "۱۴۰۴/۰۴/۳۰",
-    time: "۱۷:۰۰",
-    price: "۳۸۰,۰۰۰ تومان",
-    sessionNumber: 3,
-  },
-  {
-    id: 6,
-    doctor: "دکتر علی رضایی",
-    avatar: "https://i.pravatar.cc/200?img=51",
-    date: "۱۴۰۴/۰۳/۰۸",
-    time: "۱۲:۰۰",
-    price: "۳۲۰,۰۰۰ تومان",
-    sessionNumber: 1,
-  },
-];
-
 function SessionRecordsPage() {
+  const [sessions, setSessions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/api/user/bookings/")
+      .then((res) => setSessions(res.data))
+      .catch((err) => {
+        setError(translateApiError(err));
+        console.error(err);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
   const handleExportPdf = () => {
-    // Uses the browser's native print-to-PDF, styled via the
-    // @media print rules in SessionRecordsPage.css. This is the
-    // reliable option for Persian/RTL text — it renders through the
-    // browser's own text engine, unlike client-side PDF libraries
-    // (jsPDF etc.) which need a custom-embedded Persian font and are
-    // much more fragile for RTL/shaped Arabic-script text.
+    // Uses the browser's native print-to-PDF — see the @media print
+    // rules in SessionRecors.css for why this is preferred over a
+    // client-side PDF library for Persian/RTL text.
     window.print();
   };
 
+  const formatDate = (isoDate) => new Date(isoDate).toLocaleDateString("fa-IR");
+  const formatTime = (time) => time.slice(0, 5);
+  const formatPrice = (price) =>
+    price > 0 ? `${price.toLocaleString("fa-IR")} تومان` : "—";
+
   return (
     <div className="records-page">
-      <div className="records-page__no-print">
-      </div>
-
       <div className="records-content">
         <div className="records-card">
           <div className="records-card__header records-page__no-print">
@@ -89,66 +48,80 @@ function SessionRecordsPage() {
             </button>
           </div>
 
-          {/* Print-only heading — the header row above is hidden when
-              printing, this one takes its place with just the title. */}
-          <h1 className="records-card__title records-page__print-only">
-            سوابق جلسات
-          </h1>
+          <h1 className="records-card__title records-page__print-only">سوابق جلسات</h1>
 
-          {/* Desktop/tablet: table. Also the version used for print,
-              forced visible via @media print regardless of viewport. */}
-          <table className="records-table">
-            <thead>
-              <tr>
-                <th>پزشک</th>
-                <th>تاریخ و ساعت</th>
-                <th>شماره جلسه</th>
-                <th>مبلغ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <div className="records-table__doctor">
-                      <img src={s.avatar} alt={s.doctor} className="records-table__avatar" />
-                      <span>{s.doctor}</span>
+          {isLoading ? (
+            <p className="records-page__status">در حال بارگذاری...</p>
+          ) : error ? (
+            <p className="records-page__status records-page__status--error">{error}</p>
+          ) : sessions.length === 0 ? (
+            <p className="records-page__status">هنوز جلسه‌ای رزرو نکرده‌اید.</p>
+          ) : (
+            <>
+              {/* Desktop/tablet + print */}
+              <table className="records-table">
+                <thead>
+                  <tr>
+                    <th>پزشک</th>
+                    <th>تاریخ و ساعت</th>
+                    <th>شماره جلسه</th>
+                    <th>مبلغ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((s) => (
+                    <tr key={s.id}>
+                      <td>
+                        <div className="records-table__doctor">
+                          <img
+                            src={s.avatar || "/default-avatar.png"}
+                            alt={s.doctor}
+                            className="records-table__avatar"
+                          />
+                          <span>{s.doctor}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {formatDate(s.date)} — {formatTime(s.time)}
+                      </td>
+                      <td>جلسه {s.session_number.toLocaleString("fa-IR")}</td>
+                      <td>{formatPrice(s.price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Phone */}
+              <div className="records-list records-page__no-print">
+                {sessions.map((s) => (
+                  <div className="records-list__item" key={s.id}>
+                    <div className="records-list__header">
+                      <img
+                        src={s.avatar || "/default-avatar.png"}
+                        alt={s.doctor}
+                        className="records-table__avatar"
+                      />
+                      <span className="records-list__doctor">{s.doctor}</span>
                     </div>
-                  </td>
-                  <td>
-                    {s.date} — {s.time}
-                  </td>
-                  <td>جلسه {s.sessionNumber.toLocaleString("fa-IR")}</td>
-                  <td>{s.price}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Phone: stacked cards, same data. Hidden on print — the
-              table above is used for print regardless of screen size. */}
-          <div className="records-list records-page__no-print">
-            {sessions.map((s) => (
-              <div className="records-list__item" key={s.id}>
-                <div className="records-list__header">
-                  <img src={s.avatar} alt={s.doctor} className="records-table__avatar" />
-                  <span className="records-list__doctor">{s.doctor}</span>
-                </div>
-                <div className="records-list__row">
-                  <span className="records-list__label">تاریخ و ساعت</span>
-                  <span>{s.date} — {s.time}</span>
-                </div>
-                <div className="records-list__row">
-                  <span className="records-list__label">شماره جلسه</span>
-                  <span>جلسه {s.sessionNumber.toLocaleString("fa-IR")}</span>
-                </div>
-                <div className="records-list__row">
-                  <span className="records-list__label">مبلغ</span>
-                  <span>{s.price}</span>
-                </div>
+                    <div className="records-list__row">
+                      <span className="records-list__label">تاریخ و ساعت</span>
+                      <span>
+                        {formatDate(s.date)} — {formatTime(s.time)}
+                      </span>
+                    </div>
+                    <div className="records-list__row">
+                      <span className="records-list__label">شماره جلسه</span>
+                      <span>جلسه {s.session_number.toLocaleString("fa-IR")}</span>
+                    </div>
+                    <div className="records-list__row">
+                      <span className="records-list__label">مبلغ</span>
+                      <span>{formatPrice(s.price)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

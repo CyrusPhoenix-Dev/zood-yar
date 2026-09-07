@@ -127,6 +127,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "phone",
             "national_id",
             "role",
+            "avatar",
             "is_phone_verified",
             "is_email_verified",
         ]

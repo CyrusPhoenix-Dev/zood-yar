@@ -57,7 +57,7 @@ function Navbar() {
       <div className="navbar__top">
         <div className="navbar__top-inner">
           <Link to="/" className="navbar__logo">
-            زودیار
+            <img src="/logo_website.png" alt="zood yar logo" />
           </Link>
 
           <div className="navbar__auth-actions">

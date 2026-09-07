@@ -153,14 +153,12 @@
 
 .support-status--progress {
   color: var(--warning);
-  background: rgba(244, 162, 97, 0.12);
-  /* --warning at low opacity */
+  background: rgba(244, 162, 97, 0.12); /* --warning at low opacity */
 }
 
 .support-status--resolved {
   color: var(--success);
-  background: rgba(76, 175, 80, 0.1);
-  /* --success at low opacity */
+  background: rgba(76, 175, 80, 0.1); /* --success at low opacity */
 }
 
 /* ===========================
@@ -261,4 +259,158 @@
   .support-card {
     padding: var(--space-4);
   }
+}
+
+/* ===========================
+   "مشاهده گفتگو" button in the ticket list
+=========================== */
+.support-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+
+  font-family: var(--font-family);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--primary);
+
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.support-view-btn:hover {
+  text-decoration: underline;
+}
+
+/* ===========================
+   THREAD PANEL
+=========================== */
+.support-thread__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.support-thread__header .support-card__title {
+  margin: 0;
+}
+
+.support-thread__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.support-thread__close:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.support-thread__original {
+  background: var(--background);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.support-thread__original-text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  margin: 0 0 var(--space-2) 0;
+  white-space: pre-wrap;
+}
+
+.support-thread__original-date {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.support-thread__replies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.support-reply {
+  max-width: 85%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+/* Staff replies align opposite the user's own messages, like a
+   normal chat thread — makes who-said-what scannable at a glance. */
+.support-reply--user {
+  align-self: flex-end;
+  background: var(--primary-light);
+}
+
+.support-reply--staff {
+  align-self: flex-start;
+  background: var(--secondary-light);
+}
+
+.support-reply__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.support-reply__sender {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.support-reply__date {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.support-reply__message {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.support-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.support-reply-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  resize: vertical;
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.support-reply-input:focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }

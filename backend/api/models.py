@@ -2,6 +2,7 @@ import random
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
@@ -17,13 +18,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         USER = "user", "کاربر"
         COUNSELOR = "counselor", "خدمت دهنده"
         GUEST = "guest", "مهمان"
+        BANNED = "banned", "بلاک شده"
 
     username = models.CharField(max_length=200, unique=True)
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20, blank=True, unique=True)
+    phone = models.CharField(max_length=20, blank=True)
     national_id = models.CharField("کد ملی", max_length=20, unique=True, blank=True, null=True)
+    avatar = models.ImageField("عکس پروفایل", upload_to="user_avatars/", blank=True, null=True)
 
     # Permanent flags — the fast, cheap "is this contact info confirmed
     # real" check. Flipped to True only when an OtpCode below is
@@ -40,6 +43,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["email", "first_name", "last_name"]
+
+    def get_full_name(self):
+        full_name = f"{self.first_name} {self.last_name}".strip()
+        return full_name or self.username
+
+    def get_short_name(self):
+        return self.first_name or self.username
 
     def __str__(self):
         return self.username
@@ -133,6 +143,21 @@ class OtpCode(models.Model):
 # ===========================
 # COUNSELOR
 # ===========================
+class Specialty(models.Model):
+    """The counseling categories from ServicesPage (family, marriage,
+    individual, etc.) — a real model instead of a hardcoded string list,
+    so they're consistent between what's advertised on the services
+    page and what counselors can actually be filtered/found by."""
+    slug = models.SlugField(unique=True)
+    label = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name_plural = "Specialties"
+
+    def __str__(self):
+        return self.label
+
+
 class Counselor(models.Model):
     user = models.OneToOneField(
         User,
@@ -144,6 +169,7 @@ class Counselor(models.Model):
     nezam_number = models.CharField("شماره نظام", max_length=50, unique=True)
     degree = models.CharField("مدرک تحصیلی", max_length=100)
     bio = models.TextField("درباره من", blank=True)
+    specialties = models.ManyToManyField(Specialty, related_name="counselors", blank=True)
     session_price = models.PositiveIntegerField("هزینه هر جلسه (تومان)", default=0)
     is_verified = models.BooleanField("تایید شده توسط ادمین", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -182,3 +208,116 @@ class AvailabilitySlot(models.Model):
 
     def __str__(self):
         return f"{self.counselor} — {self.date} {self.start_time}–{self.end_time}"
+
+
+class Booking(models.Model):
+    """Created the moment a client reserves an AvailabilitySlot. This
+    is the missing link that turns "is_booked = True" into an actual
+    record of *who* booked it — without this, a counselor has no way
+    to know which client is coming to a given slot."""
+    slot = models.OneToOneField(
+        AvailabilitySlot, on_delete=models.CASCADE, related_name="booking"
+    )
+    client = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="bookings"
+    )
+    # Placeholder for a real payment gateway transaction ID (Zarinpal,
+    # etc.) once that's wired in — currently holds a mock reference
+    # from the local always-succeeds payment simulation.
+    payment_reference = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        # Keep the slot's is_booked flag in sync with the existence of
+        # a real booking, rather than trusting two places to agree.
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            self.slot.is_booked = True
+            self.slot.save(update_fields=["is_booked"])
+
+    def __str__(self):
+        return f"{self.client} → {self.slot}"
+
+
+class CounselorNote(models.Model):
+    """Private notes a counselor keeps about a specific client — never
+    visible to the client themselves, never visible to other
+    counselors. One counselor can only see/edit notes they wrote about
+    their own clients."""
+    counselor = models.ForeignKey(
+        Counselor, on_delete=models.CASCADE, related_name="client_notes"
+    )
+    client = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="counselor_notes"
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.counselor} note on {self.client}"
+
+
+class Review(models.Model):
+    """One review per completed booking — the OneToOneField itself
+    enforces "a client can only review a given session once" at the
+    database level, not just in application logic."""
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name="review"
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    comment = models.TextField(blank=True)
+    is_approved = models.BooleanField(
+        "تایید شده برای نمایش عمومی", default=False
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.booking.client} → {self.booking.slot.counselor}: {self.rating}★"
+
+
+class SupportTicket(models.Model):
+    """Open to every logged-in user regardless of role — a regular
+    client and a counselor use the exact same ticket system."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        IN_PROGRESS = "in_progress", "در حال بررسی"
+        RESOLVED = "resolved", "پاسخ داده شد"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="support_tickets")
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"#{self.id} — {self.subject} ({self.user})"
+
+
+class TicketReply(models.Model):
+    """A message in the back-and-forth on a ticket — either from the
+    ticket's own owner, or from staff responding to it."""
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="replies")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="ticket_replies")
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Reply on #{self.ticket_id} by {self.sender}"

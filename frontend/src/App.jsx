@@ -13,6 +13,8 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute'
 import PhoneAuth from './pages/PhoneAuth'
 import ForgotPassword from './pages/ForgotPassword'
+import CounselorProfile from './pages/CounselorProfile'
+import BookingPage from './pages/BookingPage'
 function Logout() {
   useEffect(() => {
     localStorage.clear();
@@ -42,8 +44,10 @@ function App() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/phoneAuth" element={<PhoneAuth />} />
           <Route path="/logout" element={<Logout />} />
-          <Route path="/Profile" element={<ProtectedRoute><Profile /></ProtectedRoute>}></Route>
-          <Route path="*" element={<NotFound />}></Route>
+          <Route path="/BookingPage/:id" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+          <Route path="/CounselorProfile/:id" element={<CounselorProfile />} />
+          <Route path="/Profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

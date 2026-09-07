@@ -8,6 +8,8 @@ import SideBar from "../components/SideBar";
 import EditPhone from "../components/EditPhone";
 import PhoneAuth from './PhoneAuth' //don't forget
 import EmailAuth from './EmailAuth'
+import CounselorCalendarPage from "./CounselorCalendar";
+import CounselorClientsPage from "./CounselorClients";
 
 function ProfilePage() {
   const [activeSection, setActiveSection] = useState("editInfo");
@@ -28,6 +30,10 @@ function ProfilePage() {
         return <EmailAuth />;
       case "phone":
         return <EditPhone />;
+      case "counselorCalender":
+        return <CounselorCalendarPage />;
+      case "counselorClients":
+        return <CounselorClientsPage />;
       default:
         return <EditInfo />;
     }

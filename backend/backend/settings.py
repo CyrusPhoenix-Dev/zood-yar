@@ -154,7 +154,7 @@ LANGUAGE_CODE = "en-us"
 USE_I18N = True
 USE_L10N = True
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Tehran"
 
 USE_I18N = True
 

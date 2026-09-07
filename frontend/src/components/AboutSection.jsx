@@ -40,7 +40,7 @@ function AboutStats() {
         {/* Image column */}
         <div className="about-stats__media">
           <img
-            src="https://picsum.photos/seed/zoodyar-about/640/560"
+            src="zood_yar_logo.png"
             alt="زودیار"
             className="about-stats__image"
           />

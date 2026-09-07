@@ -1,4 +1,15 @@
-import { FileText, UserCog, LifeBuoy, Mail, Key, RectangleEllipsis } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  FileText,
+  UserCog,
+  LifeBuoy,
+  Mail,
+  Key,
+  CalendarDays,
+  UserRoundArrowLeft,
+  RectangleEllipsis,
+} from "lucide-react";
+import api from "../api";
 import "../styles/SideBar.css";
 
 const navItems = [
@@ -7,14 +18,40 @@ const navItems = [
   { label: "تایید شماره همراه", icon: RectangleEllipsis, section: "phoneAuth" },
   { label: "تایید ایمیل", icon: Mail, section: "emailAuth" },
   { label: "ویرایش رمزعبور", icon: Key, section: "resetPassword" },
+  // These two only make sense for a counselor account — a regular
+  // client user has no calendar to manage and no clients to see.
+  { label: "تقویم من", icon: CalendarDays, section: "counselorCalender", counselorOnly: true },
+  { label: "مراجعین من", icon: UserRoundArrowLeft, section: "counselorClients", counselorOnly: true },
   { label: "پشتیبانی", icon: LifeBuoy, section: "support" },
 ];
 
 function SideNav({ setActiveSection }) {
+  const [role, setRole] = useState(null); // null while loading — nothing counselor-only shows yet
+
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .get("/api/user/profile/")
+      .then((res) => {
+        if (isMounted) setRole(res.data.role);
+      })
+      .catch(() => {
+        // If this fails, default to hiding counselor-only items rather
+        // than risk showing them to someone who isn't one.
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const visibleItems = navItems.filter(
+    (item) => !item.counselorOnly || role === "counselor"
+  );
+
   return (
     <nav className="side-nav">
       <ul className="side-nav__list">
-        {navItems.map(({ label, icon: Icon, section }) => (
+        {visibleItems.map(({ label, icon: Icon, section }) => (
           <li key={section} className="side-nav__item">
             <button
               type="button"

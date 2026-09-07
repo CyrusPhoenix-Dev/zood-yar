@@ -11,10 +11,10 @@ const quickLinks = [
 ];
 
 const serviceLinks = [
-  { label: "مشاوره شغلی", href: "/services/career" },
-  { label: "مشاوره خانواده", href: "/services/family" },
-  { label: "مشاوره ازدواج و زوجین", href: "/services/marriage" },
-  { label: "مشاوره فردی", href: "/services/individual" },
+  { label: "مشاوره شغلی", href: "/moshaverin" },
+  { label: "مشاوره خانواده", href: "/moshaverin" },
+  { label: "مشاوره ازدواج و زوجین", href: "/moshaverin" },
+  { label: "مشاوره فردی", href: "/moshaverin" },
 ];
 
 function Footer() {

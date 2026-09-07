@@ -239,3 +239,14 @@
     border-bottom: 1px solid #ccc;
   }
 }
+
+.records-page__status {
+  text-align: center;
+  padding: var(--space-8) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.records-page__status--error {
+  color: var(--danger);
+}

@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+from .models import SupportTicket, TicketReply
+from .models import Review
 
 from .models import (
     User,
@@ -210,3 +212,49 @@ class AvailabilitySlotAdmin(admin.ModelAdmin):
     list_filter = ("is_booked", "date")
     search_fields = ("counselor__user__username",)
     date_hierarchy = "date"
+
+class TicketReplyInline(admin.TabularInline):
+    model = TicketReply
+    extra = 1
+    # sender is NOT shown as an editable field at all — it's set
+    # automatically in SupportTicketAdmin.save_formset below, to
+    # whoever is logged into admin and submitting the reply. Marking
+    # it readonly instead (the earlier version) broke adding NEW
+    # replies: readonly displays an existing value but can't set one
+    # for a row that doesn't exist yet, so it was submitting as NULL
+    # and hitting the not-null constraint.
+    exclude = ("sender",)
+    readonly_fields = ("created_at",)
+
+
+@admin.register(SupportTicket)
+class SupportTicketAdmin(admin.ModelAdmin):
+    list_display = ("id", "subject", "user", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("subject", "message", "user__username")
+    inlines = [TicketReplyInline]
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if isinstance(instance, TicketReply) and not instance.pk:
+                instance.sender = request.user
+            instance.save()
+        formset.save_m2m()
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("id", "booking", "rating", "is_approved", "created_at")
+    list_filter = ("is_approved", "rating")
+    search_fields = ("booking__client__username", "booking__slot__counselor__user__username")
+    actions = ["approve_reviews", "reject_reviews"]
+
+    @admin.action(description="تایید نظرات انتخاب‌شده")
+    def approve_reviews(self, request, queryset):
+        updated = queryset.update(is_approved=True)
+        self.message_user(request, f"{updated} نظر تایید شد")
+
+    @admin.action(description="رد نظرات انتخاب‌شده")
+    def reject_reviews(self, request, queryset):
+        updated = queryset.update(is_approved=False)
+        self.message_user(request, f"{updated} نظر رد/پنهان شد")

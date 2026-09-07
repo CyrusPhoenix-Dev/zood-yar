@@ -99,7 +99,7 @@ function AboutPage() {
           <p className="about-cta__text">
             همین حالا مناسب‌ترین مشاور را پیدا کنید و اولین قدم را بردارید.
           </p>
-          <a href="/counselors" className="about-cta__button">
+          <a href="/moshaverin" className="about-cta__button">
             مشاهده مشاوران
           </a>
         </div>

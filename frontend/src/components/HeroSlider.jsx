@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "../styles/HeroSlider.css";
+import { Link, useNavigate } from "react-router";
 
 
 /**
@@ -9,30 +10,28 @@ import "../styles/HeroSlider.css";
  */
 const defaultSlides = [
   {
-    image: "https://picsum.photos/seed/zoodyar1/1200/450",
-    caption: "۲۰٪ تخفیف برای اولین رزرو مشاوره",
+    image: "slider_1.jpg",
+    caption: "",
   },
   {
-    image: "https://picsum.photos/seed/zoodyar2/1200/450",
-    caption: "بیش از ۵۰۰ متخصص معتبر در انتظار شما",
+    image: "slider_2.jpg",
+    caption: "",
   },
   {
-    image: "https://picsum.photos/seed/zoodyar3/1200/450",
-    caption: "رزرو آنلاین در کمتر از دو دقیقه",
+    image: "slider_3.jpg",
+    caption: "",
   },
   {
-    image: "https://picsum.photos/seed/zoodyar4/1200/450",
-    caption: "پشتیبانی ۲۴ ساعته برای مشتریان",
+    image: "slider_4.jpg",
+    caption: "",
   },
-  {
-    image: "https://picsum.photos/seed/zoodyar5/1200/450",
-    caption: "به زودی: خدمات حضوری در سراسر کشور",
-  },
+
 ];
 
 function Slider({ slides = defaultSlides, autoPlay = 5000 }) {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const navigate = useNavigate();
 
   const goTo = useCallback(
     (index) => {

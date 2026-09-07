@@ -1,0 +1,216 @@
+.counselor-calendar-page {
+  width: 70%;
+  max-width: var(--container);
+  margin-right: 300px;
+  padding: 0 var(--space-4);
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+
+  font-family: var(--font-family);
+}
+
+.counselor-calendar-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6) 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.counselor-calendar-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--card-padding);
+}
+
+.counselor-calendar-card__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-5) 0;
+}
+
+/* ===========================
+   ADD SLOT FORM
+=========================== */
+.counselor-calendar-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.counselor-calendar-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 140px;
+}
+
+.counselor-calendar-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.counselor-calendar-input {
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  box-sizing: border-box;
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.counselor-calendar-input:focus-visible {
+  outline: none;
+  border-color: var(--focus-outline);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.counselor-calendar-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--input-height);
+  padding: 0 var(--space-5);
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+
+  transition: background var(--transition-fast);
+}
+
+.counselor-calendar-add-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.counselor-calendar-add-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.counselor-calendar-error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  margin: var(--space-3) 0 0 0;
+}
+
+.counselor-calendar-status {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-6) 0;
+}
+
+/* ===========================
+   CALENDAR DAYS
+=========================== */
+.counselor-calendar-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.counselor-calendar-day__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.counselor-calendar-day__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ===========================
+   SLOT CHIP
+=========================== */
+.counselor-slot-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+.counselor-slot-chip--free {
+  background: var(--secondary-light);
+  color: var(--secondary-hover);
+}
+
+.counselor-slot-chip--booked {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.counselor-slot-chip__status {
+  font-weight: var(--font-semibold);
+}
+
+.counselor-slot-chip__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0;
+}
+
+.counselor-slot-chip__delete:hover {
+  opacity: 1;
+}
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 900px) {
+  .counselor-calendar-page {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .counselor-calendar-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .counselor-calendar-field {
+    min-width: 0;
+  }
+}

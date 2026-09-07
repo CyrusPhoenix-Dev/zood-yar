@@ -125,7 +125,7 @@ function ServicesPage() {
                     </li>
                   ))}
                 </ul>
-                <a href="/counselors" className="service-row__link">
+                <a href="/moshaverin" className="service-row__link">
                   مشاهده مشاوران این حوزه ←
                 </a>
               </div>

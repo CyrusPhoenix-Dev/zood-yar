@@ -33,7 +33,9 @@
   color: var(--primary);
   text-decoration: none;
 }
-
+.navbar__logo img{
+  height: 50px;
+}
 .navbar__auth-actions {
   display: flex;
   align-items: center;
