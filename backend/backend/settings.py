@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     "api",
     "rest_framework",
     "corsheaders",
@@ -107,6 +108,31 @@ DATABASES = {
         "HOST": env("DB_HOST"),
         "PORT": env.int("DB_PORT"),
     }
+}
+# storage
+
+AWS_ACCESS_KEY_ID = env("SUPABASE_STORAGE_ACCESS_KEY")
+AWS_SECRET_ACCESS_KEY = env("SUPABASE_STORAGE_SECRET_KEY")
+AWS_STORAGE_BUCKET_NAME = env("SUPABASE_STORAGE_BUCKET")
+AWS_S3_ENDPOINT_URL = env("SUPABASE_STORAGE_ENDPOINT")
+AWS_S3_REGION_NAME = env("SUPABASE_STORAGE_REGION")
+
+AWS_S3_ADDRESSING_STYLE = "path"
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+
+AWS_S3_FILE_OVERWRITE = False
+SUPABASE_PROJECT_REF = env("SUPABASE_PROJECT_REF")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "api.storage.SupabasePublicStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
 }
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -179,20 +205,14 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="زودیار <no-reply@z
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+
 # check them too
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# MEDIA_ROOT = BASE_DIR / "media"
 
 KAVENEGAR_API_KEY = env("KAVENEGAR_API_KEY")
 KAVENEGAR_SENDER = env("KAVENEGAR_SENDER")
+
