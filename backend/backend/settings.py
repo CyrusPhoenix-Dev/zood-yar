@@ -30,6 +30,9 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://zood-yar-production.up.railway.app",
+]
 # check this section later starts here
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
