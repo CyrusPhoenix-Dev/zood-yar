@@ -3,9 +3,9 @@ import { Phone, Mail, MapPin, Send } from "lucide-react";
 import "../styles/ContactSection.css";
 
 const contactInfo = [
-  { icon: Phone, label: "تلفن تماس", value: "۰۲۱-۰۰۰۰۰۰۰" },
-  { icon: Mail, label: "ایمیل", value: "info@zood-yar.ir" },
-  { icon: MapPin, label: "آدرس", value: "تهران، ایران" },
+  { icon: Phone, label: "تلفن تماس", value: "09929542476" },
+  { icon: Mail, label: "ایمیل", value: "korosh.ardestani.289@gmail.com" },
+  { icon: MapPin, label: "آدرس", value: "مشهد راهنمایی 2 پلاک 110 زنگ اول طبقه همکف" },
 ];
 
 function ContactSection() {

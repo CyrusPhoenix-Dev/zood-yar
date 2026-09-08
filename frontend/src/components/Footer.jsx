@@ -18,7 +18,6 @@ const serviceLinks = [
 ];
 
 function Footer() {
-  const year = new Date().getFullYear();
 
   return (
     <footer className="footer">
@@ -75,11 +74,11 @@ function Footer() {
             <ul className="footer__list footer__list--contact">
               <li>
                 <Phone size={16} />
-                <span>۰۲۱-۰۰۰۰۰۰۰</span>
+                <span>09929542476</span>
               </li>
               <li>
                 <Mail size={16} />
-                <span>info@zood-yar.ir</span>
+                <span>korosh.ardestani.289@gmail.com</span>
               </li>
               <li>
                 <MapPin size={16} />
@@ -92,7 +91,7 @@ function Footer() {
 
       <div className="footer__bottom">
         <p className="footer__copyright">
-          © {year} زودیار. تمامی حقوق محفوظ است.
+          © 1405 زودیار. تمامی حقوق محفوظ است.
         </p>
       </div>
     </footer>
