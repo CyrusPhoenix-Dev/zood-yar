@@ -354,20 +354,20 @@ class ForgotPasswordConfirmView(APIView):
 
 
 class CounselorPublicSlotsView(generics.ListAPIView):
-    """Public — the open (unbooked, not-yet-past) slots for one
-    counselor, what a client picks from on the booking page. Doesn't
-    reuse AvailabilitySlotListCreateView (that one is for the
-    counselor managing their own full calendar, booked included)."""
-
     serializer_class = AvailabilitySlotSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        today = timezone.localdate()
+        now = timezone.localtime()
+        today = now.date()
+        current_time = now.time()
+
         return AvailabilitySlot.objects.filter(
             counselor_id=self.kwargs["pk"],
             is_booked=False,
-            date__gte=today,
+        ).filter(
+            Q(date__gt=today) |
+            Q(date=today, start_time__gt=current_time)
         ).order_by("date", "start_time")
 
 
