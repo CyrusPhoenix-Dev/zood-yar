@@ -15,6 +15,7 @@ import PhoneAuth from './pages/PhoneAuth'
 import ForgotPassword from './pages/ForgotPassword'
 import CounselorProfile from './pages/CounselorProfile'
 import BookingPage from './pages/BookingPage'
+import BannedPage from './pages/BannedPage'
 function Logout() {
   useEffect(() => {
     localStorage.clear();
@@ -36,6 +37,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+            <Route path="/banned" element={<BannedPage />} />
           <Route path="/forgotPassword" element={<ForgotPassword />} />
           <Route path="/register" element={<Registering />} />
           <Route path="/aboutus" element={<AboutUs />} />

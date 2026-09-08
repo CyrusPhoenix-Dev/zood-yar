@@ -80,6 +80,7 @@ class CustomUserAdmin(UserAdmin):
                 "fields": (
                     "is_active",
                     "role",
+                    "ban_reason",
                     "is_staff",
                     "is_superuser",
                     "groups",

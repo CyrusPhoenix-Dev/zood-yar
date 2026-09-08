@@ -12,8 +12,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+
+from .token_serializers import CustomTokenObtainPairSerializer
 
 from .models import OtpCode, AvailabilitySlot, Booking, Counselor, CounselorNote, Review, Specialty
 from .sms import send_otp_sms
@@ -30,6 +33,16 @@ from .counselor_serializers import (
 )
 
 User = get_user_model()
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """Login. Deliberately does NOT check role here — a banned user
+    can still log in and get a token, since that's the only way for
+    them to ever learn *why* they're banned (the token itself carries
+    role + ban_reason as custom claims). Every OTHER endpoint rejects
+    a banned user's token — see authentication.py."""
+
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):

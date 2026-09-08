@@ -11,7 +11,9 @@ one (EditPhonePage.jsx / EditEmail.jsx).
 """
 
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from .views import CustomTokenObtainPairView
 
 from .views import (
     CreateUserView,
@@ -44,7 +46,7 @@ from .support_views import MyTicketListCreateView, TicketDetailView, TicketReply
 
 urlpatterns = [
     # ===== Auth: username/password (the only login method) =====
-    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # ===== Registration =====

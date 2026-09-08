@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants";
 import { translateApiError } from "../utils/apiErrors";
@@ -26,8 +27,19 @@ function LoginForm() {
       const res = await api.post("/api/token/", { username, password });
       localStorage.setItem(ACCESS_TOKEN, res.data.access);
       localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
+
+      // Custom claims embedded in the token (see token_serializers.py)
+      // — this is how we know about the ban without calling any other
+      // endpoint, since every other endpoint now correctly rejects a
+      // banned user's token.
+      const decoded = jwtDecode(res.data.access);
       window.dispatchEvent(new Event("authchange"));
-      navigate("/profile");
+
+      if (decoded.role === "banned") {
+        navigate("/banned", { state: { reason: decoded.ban_reason } });
+      } else {
+        navigate("/profile");
+      }
     } catch (err) {
       setError(translateApiError(err));
       console.error(err);
@@ -60,6 +72,9 @@ function LoginForm() {
           <label htmlFor="password" className="login-form__label">
             رمز عبور
           </label>
+          <Link to="/forgot-password" className="login-form__forgot-link">
+            رمز عبور را فراموش کرده‌اید؟
+          </Link>
         </div>
         <input
           id="password"
@@ -77,11 +92,7 @@ function LoginForm() {
       <button type="submit" className="login-form__button" disabled={loading}>
         {loading ? "در حال ورود..." : "ورود"}
       </button>
-      <Link to="/forgotPassword" className="login-form__forgot-link">
-        رمز عبور را فراموش کرده‌اید؟
-      </Link>
     </form>
-
   );
 }
 

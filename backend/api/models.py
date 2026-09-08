@@ -18,7 +18,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         USER = "user", "کاربر"
         COUNSELOR = "counselor", "خدمت دهنده"
         GUEST = "guest", "مهمان"
-        BANNED = "banned", "بلاک شده"
+        BANNED = 'banned','مسدود'
 
     username = models.CharField(max_length=200, unique=True)
     email = models.EmailField(unique=True)
@@ -27,6 +27,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, blank=True)
     national_id = models.CharField("کد ملی", max_length=20, unique=True, blank=True, null=True)
     avatar = models.ImageField("عکس پروفایل", upload_to="user_avatars/", blank=True, null=True)
+    ban_reason = models.TextField(
+        "دلیل مسدودسازی", blank=True,
+        help_text="در صورتی که نقش کاربر «مسدود» باشد، این فیلد الزامی است.",
+    )
 
     # Permanent flags — the fast, cheap "is this contact info confirmed
     # real" check. Flipped to True only when an OtpCode below is
@@ -50,6 +54,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name or self.username
+
+    def clean(self):
+        super().clean()
+        if self.role == self.Role.BANNED and not self.ban_reason.strip():
+            raise ValidationError(
+                {"ban_reason": "برای مسدود کردن کاربر، ذکر دلیل الزامی است"}
+            )
 
     def __str__(self):
         return self.username
