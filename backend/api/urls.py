@@ -30,6 +30,8 @@ from .views import (
     CounselorBookingsView,
     CounselorNoteListCreateView,
     CounselorNoteDetailView,
+    CounselorSelfView,
+    CounselorCertificateListCreateView,
     ReviewCreateView,
     PublicCounselorListView,
     PublicCounselorDirectoryView,
@@ -95,6 +97,14 @@ urlpatterns = [
         "user/change-email/confirm/",
         ChangeEmailConfirmView.as_view(),
         name="change_email_confirm",
+    ),
+
+    # ===== Counselor: my own professional info =====
+    path("counselor/me/", CounselorSelfView.as_view(), name="counselor_self"),
+    path(
+        "counselor/certificates/",
+        CounselorCertificateListCreateView.as_view(),
+        name="counselor_certificates",
     ),
 
     # ===== Counselor: availability calendar =====

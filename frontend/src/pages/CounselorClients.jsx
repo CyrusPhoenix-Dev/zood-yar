@@ -121,7 +121,8 @@ function CounselorClientsPage() {
                       onClick={() => handleSelectClient(client.id)}
                     >
                       <span className="counselor-client-item__icon">
-                        <User size={16} />
+                        {/* <User size={16} /> */}
+                        <img src={client.avatar} alt={client.name} />
                       </span>
                       <span className="counselor-client-item__text">
                         <span className="counselor-client-item__name">{client.name}</span>

@@ -279,6 +279,7 @@
 
   .edit-phone-content {
     padding: var(--space-4) 0;
+    width: 100%;
   }
 }
 

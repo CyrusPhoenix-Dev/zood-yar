@@ -1,4 +1,4 @@
-import { Aperture, Send, Phone, Mail, MapPin } from "lucide-react";
+import { NotebookPen, Send, Phone, Mail, MapPin } from "lucide-react";
 import { Link } from "react-router";
 import "../styles/Footer.css";
 
@@ -31,10 +31,10 @@ function Footer() {
               می‌کند تا مناسب‌ترین فرد را برای نیاز خود پیدا کنید.
             </p>
             <div className="footer__socials">
-              <a href="#" className="footer__social-icon" aria-label="اینستاگرام">
-                <Aperture size={18} />
+              <a href="https://eitaa.com/@AmirHA289" className="footer__social-icon" aria-label="ایتا">
+                <NotebookPen size={18} />
               </a>
-              <a href="#" className="footer__social-icon" aria-label="تلگرام">
+              <a href="https://t.me/AmirHA289" className="footer__social-icon" aria-label="تلگرام">
                 <Send size={18} />
               </a>
             </div>
@@ -82,7 +82,7 @@ function Footer() {
               </li>
               <li>
                 <MapPin size={16} />
-                <span>ایران</span>
+                <span>مشهد راهنمایی 2 پلاک 110 زنگ اول طبقه همکف</span>
               </li>
             </ul>
           </div>

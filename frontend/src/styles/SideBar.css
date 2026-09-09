@@ -87,13 +87,15 @@
 =========================== */
 @media (max-width: 900px) {
   .side-nav {
-    width: 100%;
+    width: 95%;
     position: static;
-    margin: var(--space-4) 0;
+    margin: var(--space-4) auto;
 
     padding: var(--space-2);
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: 1px;
+    scrollbar-color: var(--secondary) var(--secondary-light) ;
+
   }
 
   .side-nav::-webkit-scrollbar {

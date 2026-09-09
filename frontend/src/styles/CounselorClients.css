@@ -12,6 +12,13 @@
   font-family: var(--font-family);
 }
 
+@media screen and (max-width:900px) {
+    .counselor-clients-page {
+        width: 100%;
+        margin: 15px auto;
+    }
+}
+
 .counselor-clients-content {
   flex: 1;
   min-width: 0;
@@ -269,14 +276,11 @@
 /* ===========================
    RESPONSIVE
 =========================== */
-@media (max-width: 900px) {
-  .counselor-clients-page {
-    flex-direction: column;
-  }
-}
+
 
 @media (max-width: 768px) {
   .counselor-clients-inner {
     grid-template-columns: 1fr;
   }
+
 }

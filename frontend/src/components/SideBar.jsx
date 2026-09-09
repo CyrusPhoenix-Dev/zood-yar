@@ -18,11 +18,12 @@ const navItems = [
   { label: "تایید شماره همراه", icon: RectangleEllipsis, section: "phoneAuth" },
   { label: "تایید ایمیل", icon: Mail, section: "emailAuth" },
   { label: "ویرایش رمزعبور", icon: Key, section: "resetPassword" },
+  { label: "پشتیبانی", icon: LifeBuoy, section: "support" },
   // These two only make sense for a counselor account — a regular
   // client user has no calendar to manage and no clients to see.
+  { label: "اطلاعات مشاور", icon: LifeBuoy, section: "CounselorInfo", counselorOnly: true },
   { label: "تقویم من", icon: CalendarDays, section: "counselorCalender", counselorOnly: true },
   { label: "مراجعین من", icon: UserRoundArrowLeft, section: "counselorClients", counselorOnly: true },
-  { label: "پشتیبانی", icon: LifeBuoy, section: "support" },
 ];
 
 function SideNav({ setActiveSection }) {

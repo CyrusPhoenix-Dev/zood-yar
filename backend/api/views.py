@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from .token_serializers import CustomTokenObtainPairSerializer
 
-from .models import OtpCode, AvailabilitySlot, Booking, Counselor, CounselorNote, Review, Specialty
+from .models import OtpCode, AvailabilitySlot, Booking, Counselor, CounselorCertificate, CounselorNote, Review, Specialty
 from .sms import send_otp_sms
 from .emails import send_otp_email
 from .serializers import UserSerializer, UserProfileSerializer
@@ -26,6 +26,8 @@ from .counselor_serializers import (
     AvailabilitySlotSerializer,
     BookingClientSerializer,
     CounselorNoteSerializer,
+    CounselorSelfSerializer,
+    CounselorCertificateSerializer,
     ReviewSerializer,
     CounselorReviewSerializer,
     PublicCounselorSerializer,
@@ -354,20 +356,20 @@ class ForgotPasswordConfirmView(APIView):
 
 
 class CounselorPublicSlotsView(generics.ListAPIView):
+    """Public — the open (unbooked, not-yet-past) slots for one
+    counselor, what a client picks from on the booking page. Doesn't
+    reuse AvailabilitySlotListCreateView (that one is for the
+    counselor managing their own full calendar, booked included)."""
+
     serializer_class = AvailabilitySlotSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        now = timezone.localtime()
-        today = now.date()
-        current_time = now.time()
-
+        today = timezone.localdate()
         return AvailabilitySlot.objects.filter(
             counselor_id=self.kwargs["pk"],
             is_booked=False,
-        ).filter(
-            Q(date__gt=today) |
-            Q(date=today, start_time__gt=current_time)
+            date__gte=today,
         ).order_by("date", "start_time")
 
 
@@ -445,6 +447,35 @@ class IsCounselor(permissions.BasePermission):
         return hasattr(request.user, "counselor_profile")
 
 
+class CounselorSelfView(generics.RetrieveUpdateAPIView):
+    """The counselor's own professional info — 'ویرایش اطلاعات مشاور'.
+    Same principle as UserProfileView: no pk in the URL, always
+    resolves to the logged-in counselor's own row."""
+
+    serializer_class = CounselorSelfSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get_object(self):
+        return self.request.user.counselor_profile
+
+
+class CounselorCertificateListCreateView(generics.ListCreateAPIView):
+    """Upload/list license or degree document photos. is_verified
+    stays False regardless of what's uploaded here — an admin still
+    has to actually review the documents and flip it manually."""
+
+    serializer_class = CounselorCertificateSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get_queryset(self):
+        return CounselorCertificate.objects.filter(
+            counselor=self.request.user.counselor_profile
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(counselor=self.request.user.counselor_profile)
+
+
 class AvailabilitySlotListCreateView(generics.ListCreateAPIView):
     """GET: the logged-in counselor's own slots (their calendar).
     POST: create a new available slot for themselves.
@@ -457,7 +488,7 @@ class AvailabilitySlotListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return AvailabilitySlot.objects.filter(
             counselor=self.request.user.counselor_profile
-        )
+        ).select_related("booking__client")
 
     def perform_create(self, serializer):
         serializer.save(counselor=self.request.user.counselor_profile)

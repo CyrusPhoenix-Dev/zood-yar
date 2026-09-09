@@ -9,20 +9,69 @@ from datetime import datetime
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import AvailabilitySlot, Booking, Counselor, CounselorNote, Review, Specialty
+from .models import AvailabilitySlot, Booking, Counselor, CounselorCertificate, CounselorNote, Review, Specialty
 
 
 class SpecialtySerializer(serializers.ModelSerializer):
     class Meta:
         model = Specialty
-        fields = ["slug", "label"]
+        fields = ['id', "slug", "label"]
+
+
+class CounselorSelfSerializer(serializers.ModelSerializer):
+    """What a counselor can edit about their OWN professional info —
+    deliberately excludes is_verified (admin-only approval flag; a
+    counselor self-verifying would defeat the point of moderation) and
+    user (can't reassign whose profile this is)."""
+
+    specialties = serializers.PrimaryKeyRelatedField(
+        queryset=Specialty.objects.all(), many=True, required=False
+    )
+
+    class Meta:
+        model = Counselor
+        fields = [
+            "license_number",
+            "nezam_number",
+            "degree",
+            "bio",
+            "specialties",
+            "session_price",
+            "is_verified",  # included so the counselor can SEE their status
+        ]
+        read_only_fields = ["is_verified"]
+
+
+class CounselorCertificateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CounselorCertificate
+        fields = ["id", "image", "uploaded_at"]
+        read_only_fields = ["id", "uploaded_at"]
 
 
 class AvailabilitySlotSerializer(serializers.ModelSerializer):
+    # Only ever populated on the counselor's OWN calendar view
+    # (AvailabilitySlotListCreateView) — the public booking-page view
+    # (CounselorPublicSlotsView) only ever queries is_booked=False
+    # slots, so a booked slot's client info never actually reaches an
+    # anonymous visitor even though it uses the same serializer.
+    booked_by = serializers.SerializerMethodField()
+
     class Meta:
         model = AvailabilitySlot
-        fields = ["id", "date", "start_time", "end_time", "is_booked"]
-        read_only_fields = ["is_booked"]  # only ever set by a real Booking, never hand-edited
+        fields = ["id", "date", "start_time", "end_time", "is_booked", "booked_by"]
+        read_only_fields = ["is_booked"]
+
+    def get_booked_by(self, obj):
+        booking = getattr(obj, "booking", None)
+        if not booking:
+            return None
+        return {
+            "name": booking.client.get_full_name() or booking.client.username,
+            'avatar':booking.client.avatar.url,
+            "phone": booking.client.phone,
+            "email": booking.client.email,
+        }
 
     def validate(self, data):
         if data["start_time"] >= data["end_time"]:
@@ -36,6 +85,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
     profile (national_id, etc. stay out of this)."""
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     client_name = serializers.SerializerMethodField()
+    client_avatar = serializers.ImageField(source="client.avatar",read_only=True)
     client_phone = serializers.CharField(source="client.phone", read_only=True)
     client_email = serializers.CharField(source="client.email", read_only=True)
     date = serializers.DateField(source="slot.date", read_only=True)
@@ -48,6 +98,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
             "id",
             "client_id",
             "client_name",
+            "client_avatar",
             "client_phone",
             "client_email",
             "date",

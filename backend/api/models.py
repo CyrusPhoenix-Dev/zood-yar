@@ -26,7 +26,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20, blank=True)
     national_id = models.CharField("کد ملی", max_length=20, unique=True, blank=True, null=True)
-    avatar = models.ImageField("عکس پروفایل", upload_to="user_avatars/", blank=True, null=True)
+    avatar = models.ImageField("عکس پروفایل", upload_to="user_avatars/", blank=True, null=True, default="user_avatars/avatar.svg",)
     ban_reason = models.TextField(
         "دلیل مسدودسازی", blank=True,
         help_text="در صورتی که نقش کاربر «مسدود» باشد، این فیلد الزامی است.",

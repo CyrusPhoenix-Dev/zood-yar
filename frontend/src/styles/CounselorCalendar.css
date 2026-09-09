@@ -12,6 +12,13 @@
   font-family: var(--font-family);
 }
 
+@media screen and (max-width:900px) {
+  .counselor-calendar-page {
+    width: 100%;
+    margin: 15px auto;
+  }
+}
+
 .counselor-calendar-content {
   flex: 1;
   min-width: 0;
@@ -20,6 +27,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  width: 100%;
 }
 
 .counselor-calendar-card {
@@ -73,7 +81,7 @@
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-
+  width: 100%;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -195,6 +203,37 @@
   opacity: 1;
 }
 
+/* ==========================
+      SHOW AVATAR
+======================== */
+.counselor-slot-chip button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: var(--font-family);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 50px;
+  padding: 5px;
+  transition: 0.5s;
+}
+
+.counselor-slot-chip button:hover {
+  background-color: var(--primary);
+}
+
+.counselor-slot-chip button span {
+  margin: 0 10px;
+}
+
+.counselor-slot-chip .user_avatar {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  margin: 0 10px;
+}
+
 /* ===========================
    RESPONSIVE
 =========================== */
@@ -213,4 +252,75 @@
   .counselor-calendar-field {
     min-width: 0;
   }
+}
+
+/* ===================
+      OPEN INFO
+======================= */
+.open_info_overlay {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.5);
+
+  z-index: 1000;
+}
+
+.open_info {
+  width: min(90%, 450px);
+  padding: 30px;
+  position: fixed;
+  background: white;
+  border-radius: 16px;
+
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  top: 25%;
+  right: 25%;
+  left: 25%;
+  box-sizing: border-box;
+}
+
+.open_info img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.open_info h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.open_info p {
+  margin: 0;
+  font-size: 16px;
+}
+
+.open_info button {
+  margin-top: 10px;
+  padding: 10px 25px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #333;
+  color: white;
+
+  cursor: pointer;
+  font-size: 15px;
+  font-family: var(--font-family);
+}
+
+.open_info button:hover {
+  opacity: 0.85;
 }

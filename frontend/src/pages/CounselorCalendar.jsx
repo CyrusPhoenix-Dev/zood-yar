@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Clock } from "lucide-react";
 import * as DatePickerModule from "react-multi-date-picker";
+// Confirmed by inspecting the module: Vite wraps this package's
+// export in two layers of interop, so the real forwardRef component
+// sits at .default.default, not just .default.
 const DatePicker = DatePickerModule.default.default;
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
@@ -8,7 +11,6 @@ import gregorian from "react-date-object/calendars/gregorian";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorCalendar.css";
-import "../../node_modules/react-multi-date-picker/styles/layouts/prime.css";
 
 function toJalaliWeekday(dateStr) {
   // Simple grouping label — swap for a real Jalali date library
@@ -30,6 +32,7 @@ function CounselorCalendarPage() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const fetchSlots = async () => {
     try {
@@ -100,6 +103,11 @@ function CounselorCalendarPage() {
     }
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
+
+  function OpenInfo(slot) {
+    console.log(slot);
+    setSelectedClient(slot.booked_by);
+  }
 
   return (
     <div className="counselor-calendar-page">
@@ -178,11 +186,10 @@ function CounselorCalendarPage() {
                     {daySlots.map((slot) => (
                       <div
                         key={slot.id}
-                        className={`counselor-slot-chip ${
-                          slot.is_booked
-                            ? "counselor-slot-chip--booked"
-                            : "counselor-slot-chip--free"
-                        }`}
+                        className={`counselor-slot-chip ${slot.is_booked
+                          ? "counselor-slot-chip--booked"
+                          : "counselor-slot-chip--free"
+                          }`}
                       >
                         <Clock size={13} />
                         <span>
@@ -191,6 +198,12 @@ function CounselorCalendarPage() {
                         <span className="counselor-slot-chip__status">
                           {slot.is_booked ? "رزرو شده" : "آزاد"}
                         </span>
+                        {slot.is_booked && slot.booked_by && (
+                          <button className="counselor-slot-chip__client" onClick={() => OpenInfo(slot)}>
+                            <img src={slot.booked_by.avatar} alt={slot.booked_by.name} className="user_avatar" />
+                            <span>{slot.booked_by.name}</span>
+                          </button>
+                        )}
                         {!slot.is_booked && (
                           <button
                             type="button"
@@ -210,6 +223,18 @@ function CounselorCalendarPage() {
           )}
         </div>
       </div>
+      {selectedClient && (
+        <div className="open_info">
+          <img
+            src={selectedClient.avatar}
+            alt={selectedClient.name}
+          />
+
+          <h1>{selectedClient.name}</h1>
+          <p>{selectedClient.phone}</p>
+          <button onClick={() => setSelectedClient(null)}>بستن</button>
+        </div>
+      )}
     </div>
   );
 }

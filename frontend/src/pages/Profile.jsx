@@ -6,6 +6,7 @@ import ResetPassword from "../components/ResetPassword";
 import Support from "../components/Support";
 import SideBar from "../components/SideBar";
 import EditPhone from "../components/EditPhone";
+import CounselorInfo from "../components/CounselorInfo";
 import PhoneAuth from './PhoneAuth' //don't forget
 import EmailAuth from './EmailAuth'
 import CounselorCalendarPage from "./CounselorCalendar";
@@ -34,6 +35,8 @@ function ProfilePage() {
         return <CounselorCalendarPage />;
       case "counselorClients":
         return <CounselorClientsPage />;
+      case "CounselorInfo":
+        return <CounselorInfo />;
       default:
         return <EditInfo />;
     }

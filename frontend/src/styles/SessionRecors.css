@@ -11,6 +11,12 @@
 
   font-family: var(--font-family);
 }
+@media screen and (max-width:900px) {
+    .records-page {
+        width: 100%;
+        margin: 15px auto;
+    }
+}
 
 .records-content {
   flex: 1;
@@ -167,11 +173,7 @@
 /* ===========================
    RESPONSIVE
 =========================== */
-@media (max-width: 900px) {
-  .records-page {
-    flex-direction: column;
-  }
-}
+
 
 @media (max-width: 640px) {
   .records-table {
