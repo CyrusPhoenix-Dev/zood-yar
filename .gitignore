@@ -28,3 +28,5 @@ frontend/dist/
 
 # Logs
 *.log
+private-key-file.pem
+public-key-file.pub

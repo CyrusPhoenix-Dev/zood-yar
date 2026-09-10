@@ -84,6 +84,21 @@ function Footer() {
                 <MapPin size={16} />
                 <span>مشهد راهنمایی 2 پلاک 110 زنگ اول طبقه همکف</span>
               </li>
+              <li>
+                <a
+                  referrerPolicy="origin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://trustseal.enamad.ir/?id=7666369&Code=aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
+                >
+                  <img
+                    referrerPolicy="origin"
+                    src="https://trustseal.enamad.ir/logo.aspx?id=7666369&Code=aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
+                    alt="Enamad"
+                    style={{ cursor: "pointer" }}
+                  />
+                </a>
+              </li>
             </ul>
           </div>
         </div>
