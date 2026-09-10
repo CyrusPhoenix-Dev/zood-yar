@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment / secrets
+.env
+*.env
+
+# Django
+db.sqlite3
+
+# User uploads
+backend/media/
+
+# Django generated static files
+backend/staticfiles/
+
+# Node
+frontend/node_modules/
+
+# Frontend build output
+frontend/dist/
+
+# Logs
+*.log
