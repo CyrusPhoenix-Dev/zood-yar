@@ -6,9 +6,24 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
-
 from .managers import UserManager
+import os
+import uuid
 
+
+def user_avatar_upload_path(instance, filename):
+    """All profile avatars in one folder, renamed to the username."""
+    ext = os.path.splitext(filename)[1]
+    return f"user_avatars/{instance.username}{ext}"
+
+
+def counselor_certificate_upload_path(instance, filename):
+    """One folder per counselor, file named <username>_<uuid><ext> so
+    multiple certificates for the same counselor never collide."""
+    ext = os.path.splitext(filename)[1]
+    username = instance.counselor.user.username
+    unique = uuid.uuid4().hex[:8]
+    return f"counselor_certificates/{username}/{username}_{unique}{ext}"
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
@@ -20,17 +35,23 @@ class User(AbstractBaseUser, PermissionsMixin):
         GUEST = "guest", "مهمان"
         BANNED = 'banned','مسدود'
 
+    class Gender(models.TextChoices):
+        MALE = "male", "مرد"
+        FEMALE = "female", "زن"
+
     username = models.CharField(max_length=200, unique=True)
-    email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20, blank=True)
     national_id = models.CharField("کد ملی", max_length=20, unique=True, blank=True, null=True)
-    avatar = models.ImageField("عکس پروفایل", upload_to="user_avatars/", blank=True, null=True, default="user_avatars/avatar.svg",)
-    ban_reason = models.TextField(
-        "دلیل مسدودسازی", blank=True,
-        help_text="در صورتی که نقش کاربر «مسدود» باشد، این فیلد الزامی است.",
-    )
+    avatar = models.ImageField("عکس پروفایل", upload_to=user_avatar_upload_path, blank=True, null=True, default="user_avatars/avatar.svg")
+    ban_reason = models.TextField("دلیل مسدودسازی", blank=True,help_text="در صورتی که نقش کاربر «مسدود» باشد، این فیلد الزامی است.",)
+
+    # Additional client-facing profile info. Both optional (blank=True)
+    # since existing users won't have these set yet, and there's no
+    # requirement forcing every user to provide them at registration.
+    birth_date = models.DateField("تاریخ تولد", null=True, blank=True)
+    gender = models.CharField("جنسیت", max_length=10, choices=Gender.choices, blank=True)
 
     # Permanent flags — the fast, cheap "is this contact info confirmed
     # real" check. Flipped to True only when an OtpCode below is
@@ -46,7 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "username"
-    REQUIRED_FIELDS = ["email", "first_name", "last_name"]
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     def get_full_name(self):
         full_name = f"{self.first_name} {self.last_name}".strip()
@@ -62,6 +83,15 @@ class User(AbstractBaseUser, PermissionsMixin):
                 {"ban_reason": "برای مسدود کردن کاربر، ذکر دلیل الزامی است"}
             )
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = User.objects.filter(pk=self.pk).only("avatar").first()
+            if old and old.avatar and old.avatar.name != self.avatar.name:
+                default_path = self._meta.get_field("avatar").default
+                if old.avatar.name != default_path:
+                    old.avatar.delete(save=False)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.username
 
@@ -74,7 +104,6 @@ class OtpCode(models.Model):
 
     class Channel(models.TextChoices):
         PHONE = "phone", "تلفن"
-        EMAIL = "email", "ایمیل"
 
     class Purpose(models.TextChoices):
         LOGIN = "login", "ورود"
@@ -176,9 +205,9 @@ class Counselor(models.Model):
         related_name="counselor_profile",
         limit_choices_to={"role": User.Role.COUNSELOR},
     )
-    license_number = models.CharField("شماره پروانه", max_length=50, unique=True)
-    nezam_number = models.CharField("شماره نظام", max_length=50, unique=True)
-    degree = models.CharField("مدرک تحصیلی", max_length=100)
+    license_number = models.CharField("شماره پروانه", max_length=50, unique=True, blank=True, null=True)
+    nezam_number = models.CharField("شماره نظام", max_length=50, unique=True, blank=True, null=True)
+    degree = models.CharField("مدرک تحصیلی", max_length=100, blank=True, null=True)
     bio = models.TextField("درباره من", blank=True)
     specialties = models.ManyToManyField(Specialty, related_name="counselors", blank=True)
     session_price = models.PositiveIntegerField("هزینه هر جلسه (تومان)", default=0)
@@ -193,7 +222,7 @@ class CounselorCertificate(models.Model):
     """Separate model since a counselor may have multiple license/degree
     documents — one CharField couldn't hold more than one path anyway."""
     counselor = models.ForeignKey(Counselor, on_delete=models.CASCADE, related_name="certificates")
-    image = models.ImageField(upload_to="counselor_certificates/")
+    image = models.ImageField(upload_to=counselor_certificate_upload_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 

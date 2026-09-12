@@ -169,21 +169,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-# ===========================
-# EMAIL (for email OTP verification — ChangeEmailRequestOtpView)
-# Works with any SMTP provider: Brevo, Mailgun, SendGrid, etc. —
-# swap the .env values, no code change needed.
-# In local dev, you can temporarily use the console backend instead
-# to print emails to your terminal without sending anything real:
-#   EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-# ===========================
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = env("EMAIL_HOST")
-EMAIL_PORT = env("EMAIL_PORT", cast=int, default=587)
-EMAIL_USE_TLS = env("EMAIL_USE_TLS", cast=bool, default=True)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="زودیار <no-reply@zood-yar.ir>")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/

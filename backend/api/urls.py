@@ -20,8 +20,6 @@ from .views import (
     UserProfileView,
     ChangePhoneRequestOtpView,
     ChangePhoneConfirmView,
-    ChangeEmailRequestOtpView,
-    ChangeEmailConfirmView,
     ChangePasswordView,
     ForgotPasswordRequestView,
     ForgotPasswordConfirmView,
@@ -85,18 +83,6 @@ urlpatterns = [
         "user/change-phone/confirm/",
         ChangePhoneConfirmView.as_view(),
         name="change_phone_confirm",
-    ),
-
-    # ===== Profile: verify/change email (authenticated, OTP) =====
-    path(
-        "user/change-email/request-otp/",
-        ChangeEmailRequestOtpView.as_view(),
-        name="change_email_request",
-    ),
-    path(
-        "user/change-email/confirm/",
-        ChangeEmailConfirmView.as_view(),
-        name="change_email_confirm",
     ),
 
     # ===== Counselor: my own professional info =====

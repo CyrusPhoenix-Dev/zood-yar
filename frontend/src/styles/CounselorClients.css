@@ -107,8 +107,13 @@
   border-radius: var(--radius-full);
   background: var(--background);
   color: var(--primary);
+  overflow: hidden;
 }
-
+.counselor-client-item__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* fills the circle without distorting aspect ratio */
+}
 .counselor-client-item__text {
   display: flex;
   flex-direction: column;

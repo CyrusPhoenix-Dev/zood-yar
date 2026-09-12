@@ -16,7 +16,6 @@ from django.core.exceptions import ValidationError
 # Persian error message.
 FIELD_LABELS_FA = {
     "username": "نام کاربری",
-    "email": "ایمیل",
     "first_name": "نام",
     "last_name": "نام خانوادگی",
     "phone": "شماره تلفن",

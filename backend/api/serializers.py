@@ -17,14 +17,6 @@ class UserSerializer(serializers.ModelSerializer):
             )
         ]
     )
-    email = serializers.EmailField(
-        validators=[
-            UniqueValidator(
-                queryset=User.objects.all(),
-                message="این ایمیل قبلا ثبت شده است",
-            )
-        ]
-    )
     phone = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -51,7 +43,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "username",
-            "email",
             "first_name",
             "last_name",
             "phone",
@@ -75,10 +66,6 @@ class UserSerializer(serializers.ModelSerializer):
         if new_phone is not None and new_phone != instance.phone:
             instance.is_phone_verified = False
 
-        new_email = validated_data.get("email")
-        if new_email is not None and new_email != instance.email:
-            instance.is_email_verified = False
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -86,42 +73,23 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Separate from UserSerializer on purpose: this one is for
-    viewing/editing an existing account, not creating one — no
-    password field, no UniqueValidators re-running against yourself
-    (a user PATCHing their own profile with their own unchanged email
-    shouldn't get an "already exists" error against their own record)."""
-
-    class Meta:
-        model = User
-        fields = [
-            "id",
-            "username",
-            "email",
-            "first_name",
-            "last_name",
-            "phone",
-            "national_id",
-            "is_phone_verified",
-            "is_email_verified",
-            "role",
-        ]
-        read_only_fields = ["id", "username", "is_phone_verified", "is_email_verified", "role"]
-
-
-class UserProfileSerializer(serializers.ModelSerializer):
     """Used for viewing/editing an already-authenticated user's own
     data — deliberately has no password field. Password changes are a
     separate, more sensitive action and should go through their own
     endpoint (requiring the current password), not get bundled into a
-    general "edit my profile" PATCH."""
+    general "edit my profile" PATCH.
+
+    birth_date/gender are both optional (blank on the model) and
+    freely writable here — they're just extra profile info, not
+    security-sensitive like phone/role, so no special validation
+    beyond what DRF's ModelSerializer generates from the model fields
+    themselves (valid date, valid choice)."""
 
     class Meta:
         model = User
         fields = [
             "id",
             "username",
-            "email",
             "first_name",
             "last_name",
             "phone",
@@ -129,6 +97,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "role",
             "avatar",
             "is_phone_verified",
-            "is_email_verified",
+            "birth_date",
+            "gender",
         ]
-        read_only_fields = ["id", "username", "role", "is_phone_verified", "is_email_verified"]
+        read_only_fields = ["id", "username", "role", "is_phone_verified"]

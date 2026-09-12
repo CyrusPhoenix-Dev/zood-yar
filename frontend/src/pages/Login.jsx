@@ -72,7 +72,7 @@ function LoginForm() {
           <label htmlFor="password" className="login-form__label">
             رمز عبور
           </label>
-          <Link to="/forgot-password" className="login-form__forgot-link">
+          <Link to="/forgotPassword" className="login-form__forgot-link">
             رمز عبور را فراموش کرده‌اید؟
           </Link>
         </div>

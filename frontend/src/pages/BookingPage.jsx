@@ -36,9 +36,20 @@ function BookingPage() {
       .finally(() => setIsLoading(false));
   }, [id]);
 
+  // Group slots by date so the calendar reads as day-sections. The
+  // backend already excludes past *days* (date__gte=today), but a
+  // slot that's today and already ended still comes through — that
+  // gets filtered out here, on the client, purely for display. Slots
+  // aren't deleted anywhere; this only hides what's already elapsed.
   const groupedByDate = useMemo(() => {
+    const now = new Date();
+    const upcoming = slots.filter((slot) => {
+      const slotEnd = new Date(`${slot.date}T${slot.end_time}`);
+      return slotEnd > now;
+    });
+
     const groups = {};
-    for (const slot of slots) {
+    for (const slot of upcoming) {
       if (!groups[slot.date]) groups[slot.date] = [];
       groups[slot.date].push(slot);
     }

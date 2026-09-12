@@ -28,7 +28,7 @@ class CustomUserChangeForm(UserChangeForm):
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "email", "first_name", "last_name", "phone")
+        fields = ("username", "first_name", "last_name", "phone")
 
 
 # ===========================
@@ -43,21 +43,18 @@ class CustomUserAdmin(UserAdmin):
 
     list_display = (
         "username",
-        "email",
         "first_name",
         "last_name",
         "role",
         "is_phone_verified",
-        "is_email_verified",
         "is_active",
         "date_joined",
     )
 
-    list_filter = ("role", "is_active", "is_staff", "is_phone_verified", "is_email_verified")
+    list_filter = ("role", "is_active", "is_staff", "is_phone_verified",)
 
     search_fields = (
         "username",
-        "email",
         "first_name",
         "last_name",
         "phone",
@@ -68,11 +65,11 @@ class CustomUserAdmin(UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             "اطلاعات شخصی",
-            {"fields": ("first_name", "last_name", "email", "phone", "national_id")},
+            {"fields": ("first_name", "last_name", "phone", "national_id",)},
         ),
         (
             "وضعیت تایید",
-            {"fields": ("is_phone_verified", "is_email_verified")},
+            {"fields": ("is_phone_verified",)},
         ),
         (
             "دسترسی‌ها",
@@ -100,7 +97,6 @@ class CustomUserAdmin(UserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "username",
-                    "email",
                     "first_name",
                     "last_name",
                     "phone",

@@ -18,9 +18,17 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from .token_serializers import CustomTokenObtainPairSerializer
 
-from .models import OtpCode, AvailabilitySlot, Booking, Counselor, CounselorCertificate, CounselorNote, Review, Specialty
-from .sms import send_otp_sms
-from .emails import send_otp_email
+from .models import (
+    OtpCode,
+    AvailabilitySlot,
+    Booking,
+    Counselor,
+    CounselorCertificate,
+    CounselorNote,
+    Review,
+    Specialty,
+)
+from .sms import send_otp_sms, send_booking_reminder_sms, send_counselor_booking_notice_sms
 from .serializers import UserSerializer, UserProfileSerializer
 from .counselor_serializers import (
     AvailabilitySlotSerializer,
@@ -35,6 +43,7 @@ from .counselor_serializers import (
 )
 
 User = get_user_model()
+
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -61,7 +70,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
 
 class CreateUserView(generics.CreateAPIView):
-    """Registration. Does NOT touch is_phone_verified/is_email_verified
+    """Registration. Does NOT touch is_phone_verified
     — those stay False until the user actually verifies from their
     profile. Verification is never assumed just because someone typed
     a phone/email at signup."""
@@ -171,81 +180,6 @@ class ChangePhoneConfirmView(APIView):
         )
 
 
-# ===========================
-# EMAIL VERIFICATION (profile-only — mirrors phone above exactly)
-# ===========================
-class ChangeEmailRequestOtpView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        email = request.data.get("email", "").strip().lower()
-        if not email:
-            return Response(
-                {"email": ["این فیلد الزامی است"]}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if User.objects.filter(email=email).exclude(pk=request.user.pk).exists():
-            return Response(
-                {"email": ["این ایمیل قبلا ثبت شده است"]},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        otp = OtpCode.generate(
-            destination=email,
-            channel=OtpCode.Channel.EMAIL,
-            purpose=OtpCode.Purpose.VERIFY,
-            user=request.user,
-        )
-
-        if not send_otp_email(email, otp.code):
-            return Response(
-                {"detail": "ارسال ایمیل ناموفق بود. دوباره تلاش کنید"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        return Response({"detail": "کد ارسال شد"}, status=status.HTTP_200_OK)
-
-
-class ChangeEmailConfirmView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        email = request.data.get("email", "").strip().lower()
-        code = request.data.get("code", "").strip()
-
-        otp = (
-            OtpCode.objects.filter(
-                destination=email,
-                channel=OtpCode.Channel.EMAIL,
-                purpose=OtpCode.Purpose.VERIFY,
-                user=request.user,
-                is_used=False,
-            )
-            .order_by("-created_at")
-            .first()
-        )
-
-        if not otp or not otp.verify(code):
-            return Response(
-                {"detail": "کد نامعتبر یا منقضی شده است"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if User.objects.filter(email=email).exclude(pk=request.user.pk).exists():
-            return Response(
-                {"email": ["این ایمیل قبلا ثبت شده است"]},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        request.user.email = email
-        request.user.is_email_verified = True
-        request.user.save(update_fields=["email", "is_email_verified"])
-
-        return Response(
-            {"detail": "ایمیل با موفقیت تایید شد"}, status=status.HTTP_200_OK
-        )
-
-
 class ChangePasswordView(APIView):
     """Authenticated. Requires the current password as proof of intent
     — without this check, anyone with a stolen/left-open session token
@@ -290,17 +224,17 @@ class ForgotPasswordRequestView(APIView):
         username = request.data.get("username", "").strip()
         user = User.objects.filter(username=username).first()
 
-        if user and user.email:
+        if user and user.phone and user.is_phone_verified:
             otp = OtpCode.generate(
-                destination=user.email,
-                channel=OtpCode.Channel.EMAIL,
+                destination=user.phone,
+                channel=OtpCode.Channel.PHONE,
                 purpose=OtpCode.Purpose.PASSWORD_RESET,
                 user=user,
             )
-            send_otp_email(user.email, otp.code)
+            send_otp_sms(user.phone, otp.code, purpose="password_reset")
 
         return Response(
-            {"detail": "در صورت وجود حساب، کد بازیابی به ایمیل ثبت‌شده ارسال شد"},
+            {"detail": "در صورت وجود حساب، کد بازیابی به شماره تلفن ثبت‌شده ارسال شد"},
             status=status.HTTP_200_OK,
         )
 
@@ -324,8 +258,8 @@ class ForgotPasswordConfirmView(APIView):
 
         otp = (
             OtpCode.objects.filter(
-                destination=user.email,
-                channel=OtpCode.Channel.EMAIL,
+                destination=user.phone,
+                channel=OtpCode.Channel.PHONE,
                 purpose=OtpCode.Purpose.PASSWORD_RESET,
                 user=user,
                 is_used=False,
@@ -410,7 +344,8 @@ class BookSlotView(APIView):
                 slot = AvailabilitySlot.objects.select_for_update().get(pk=pk)
             except AvailabilitySlot.DoesNotExist:
                 return Response(
-                    {"detail": "زمان مورد نظر یافت نشد"}, status=status.HTTP_404_NOT_FOUND
+                    {"detail": "زمان مورد نظر یافت نشد"},
+                    status=status.HTTP_404_NOT_FOUND,
                 )
 
             if slot.is_booked:
@@ -430,6 +365,31 @@ class BookSlotView(APIView):
 
             booking = Booking.objects.create(
                 slot=slot, client=request.user, payment_reference=payment_reference
+            )
+
+        # Outside the atomic block, so an SMS failure never rolls back
+        # a successful booking. Each side (client, counselor) only
+        # gets texted if THEIR OWN phone is verified — an
+        # unverified/blank number isn't confirmed to actually belong
+        # to that person, so it isn't a safe or meaningful destination
+        # for a booking notification.
+        session_datetime = (
+            f"{slot.date.strftime('%Y/%m/%d')} {slot.start_time.strftime('%H:%M')}"
+        )
+
+        if request.user.phone and request.user.is_phone_verified:
+            send_booking_reminder_sms(
+                request.user.phone,
+                session_datetime,
+                slot.counselor.user.get_full_name() or slot.counselor.user.username,
+            )
+
+        counselor_user = slot.counselor.user
+        if counselor_user.phone and counselor_user.is_phone_verified:
+            send_counselor_booking_notice_sms(
+                counselor_user.phone,
+                request.user.get_full_name() or request.user.username,
+                session_datetime,
             )
 
         return Response(
@@ -603,9 +563,13 @@ class CounselorReviewListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return Review.objects.filter(
-            booking__slot__counselor_id=self.kwargs["pk"], is_approved=True
-        ).select_related("booking__client").order_by("-created_at")
+        return (
+            Review.objects.filter(
+                booking__slot__counselor_id=self.kwargs["pk"], is_approved=True
+            )
+            .select_related("booking__client")
+            .order_by("-created_at")
+        )
 
 
 class MyBookingsView(APIView):
@@ -643,9 +607,11 @@ class MyBookingsView(APIView):
                 {
                     "id": booking.id,
                     "doctor": counselor.user.get_full_name() or counselor.user.username,
-                    "avatar": request.build_absolute_uri(counselor.user.avatar.url)
-                    if counselor.user.avatar
-                    else None,
+                    "avatar": (
+                        request.build_absolute_uri(counselor.user.avatar.url)
+                        if counselor.user.avatar
+                        else None
+                    ),
                     "date": booking.slot.date,
                     "time": booking.slot.start_time,
                     "price": counselor.session_price,
@@ -776,7 +742,9 @@ class PublicCounselorDirectoryView(generics.ListAPIView):
             except ValueError:
                 pass  # ignore a malformed min_rating rather than 500
 
-        return queryset.order_by(F("rating_avg").desc(nulls_last=True), "-booking_count")
+        return queryset.order_by(
+            F("rating_avg").desc(nulls_last=True), "-booking_count"
+        )
 
 
 class SpecialtyListView(generics.ListAPIView):

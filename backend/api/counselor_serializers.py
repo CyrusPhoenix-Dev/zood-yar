@@ -4,18 +4,27 @@ Kept separate from serializers.py since it's a genuinely different
 concern (counselor-facing features), not because of any technical
 requirement — merge into serializers.py if you'd rather keep one file.
 """
+
 from datetime import datetime
 
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import AvailabilitySlot, Booking, Counselor, CounselorCertificate, CounselorNote, Review, Specialty
+from .models import (
+    AvailabilitySlot,
+    Booking,
+    Counselor,
+    CounselorCertificate,
+    CounselorNote,
+    Review,
+    Specialty,
+)
 
 
 class SpecialtySerializer(serializers.ModelSerializer):
     class Meta:
         model = Specialty
-        fields = ['id', "slug", "label"]
+        fields = ["id", "slug", "label"]
 
 
 class CounselorSelfSerializer(serializers.ModelSerializer):
@@ -66,11 +75,16 @@ class AvailabilitySlotSerializer(serializers.ModelSerializer):
         booking = getattr(obj, "booking", None)
         if not booking:
             return None
+
+        request = self.context.get("request")
+        avatar_url = booking.client.avatar.url if booking.client.avatar else None
+        if avatar_url and request:
+            avatar_url = request.build_absolute_uri(avatar_url)
+
         return {
             "name": booking.client.get_full_name() or booking.client.username,
-            'avatar':booking.client.avatar.url,
+            "avatar": avatar_url,
             "phone": booking.client.phone,
-            "email": booking.client.email,
         }
 
     def validate(self, data):
@@ -83,11 +97,11 @@ class BookingClientSerializer(serializers.ModelSerializer):
     """A booking as seen by the counselor — includes just enough of
     the client's info to identify them and reach out, not their full
     profile (national_id, etc. stay out of this)."""
+
     client_id = serializers.IntegerField(source="client.id", read_only=True)
     client_name = serializers.SerializerMethodField()
-    client_avatar = serializers.ImageField(source="client.avatar",read_only=True)
+    client_avatar = serializers.ImageField(source="client.avatar", read_only=True)
     client_phone = serializers.CharField(source="client.phone", read_only=True)
-    client_email = serializers.CharField(source="client.email", read_only=True)
     date = serializers.DateField(source="slot.date", read_only=True)
     start_time = serializers.TimeField(source="slot.start_time", read_only=True)
     end_time = serializers.TimeField(source="slot.end_time", read_only=True)
@@ -100,7 +114,6 @@ class BookingClientSerializer(serializers.ModelSerializer):
             "client_name",
             "client_avatar",
             "client_phone",
-            "client_email",
             "date",
             "start_time",
             "end_time",
@@ -122,6 +135,7 @@ class CounselorReviewSerializer(serializers.ModelSerializer):
     """A review as shown publicly on a counselor's profile page — only
     the reviewer's first name, not full identity (last name, contact
     info), out of basic privacy courtesy toward the reviewing client."""
+
     reviewer_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -150,9 +164,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("شما قبلا برای این جلسه نظر ثبت کرده‌اید")
 
         slot = booking.slot
-        session_end = timezone.make_aware(
-            datetime.combine(slot.date, slot.end_time)
-        )
+        session_end = timezone.make_aware(datetime.combine(slot.date, slot.end_time))
         if timezone.now() < session_end:
             raise serializers.ValidationError(
                 "امکان ثبت نظر تنها پس از پایان جلسه وجود دارد"
@@ -172,6 +184,7 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
     (CounselorDetailView, CounselorReviewListView,
     ReviewableBookingView) looks up by Counselor.pk via the URL's
     <int:pk>, so this listing's id has to match that, not User.pk."""
+
     name = serializers.SerializerMethodField()
     avatar = serializers.ImageField(source="user.avatar", read_only=True)
     rating = serializers.SerializerMethodField()
@@ -180,7 +193,16 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Counselor
-        fields = ["id", "name", "avatar", "bio", "rating", "bookings", "session_price", "specialties"]
+        fields = [
+            "id",
+            "name",
+            "avatar",
+            "bio",
+            "rating",
+            "bookings",
+            "session_price",
+            "specialties",
+        ]
 
     def get_name(self, obj):
         return obj.user.get_full_name() or obj.user.username

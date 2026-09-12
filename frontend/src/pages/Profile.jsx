@@ -8,7 +8,6 @@ import SideBar from "../components/SideBar";
 import EditPhone from "../components/EditPhone";
 import CounselorInfo from "../components/CounselorInfo";
 import PhoneAuth from './PhoneAuth' //don't forget
-import EmailAuth from './EmailAuth'
 import CounselorCalendarPage from "./CounselorCalendar";
 import CounselorClientsPage from "./CounselorClients";
 
@@ -27,8 +26,6 @@ function ProfilePage() {
         return <Support />;
       case "phoneAuth":
         return <PhoneAuth />;
-      case "emailAuth":
-        return <EmailAuth />;
       case "phone":
         return <EditPhone />;
       case "counselorCalender":

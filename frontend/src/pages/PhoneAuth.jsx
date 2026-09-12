@@ -8,6 +8,7 @@ const RESEND_SECONDS = 60;
 
 function EditPhonePage() {
   const [currentPhone, setCurrentPhone] = useState(null); // null while loading
+  const [isVerified, setIsVerified] = useState(false);
   const [step, setStep] = useState("loading"); // "loading" | "current" | "new" | "code" | "done"
   const [newPhone, setNewPhone] = useState("");
   const [code, setCode] = useState("");
@@ -16,9 +17,10 @@ function EditPhonePage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const codeInputRef = useRef(null);
 
-  // Fetch the real, currently-saved phone number on mount — this is
-  // what was missing before: the page previously showed a hardcoded
-  // placeholder value instead of the logged-in user's actual data.
+  // Fetch the real, currently-saved phone number (and its verification
+  // status) on mount — this is what was missing before: the page
+  // previously showed a hardcoded placeholder value instead of the
+  // logged-in user's actual data.
   useEffect(() => {
     let isMounted = true;
 
@@ -27,6 +29,7 @@ function EditPhonePage() {
       .then((res) => {
         if (!isMounted) return;
         setCurrentPhone(res.data.phone || "");
+        setIsVerified(res.data.is_phone_verified);
         setStep("current");
       })
       .catch((err) => {
@@ -58,8 +61,13 @@ function EditPhonePage() {
       setError("شماره تلفن معتبر نیست (مثال: 09121234567)");
       return;
     }
-    if (newPhone === currentPhone) {
-      setError("این شماره در حال حاضر شماره فعال شماست");
+    // Only block re-entering the same number if it's already verified.
+    // If the user has this number saved but never verified it, typing
+    // it back in here IS the legitimate way to trigger verification —
+    // it must fall through and send an OTP, not get rejected as a
+    // no-op.
+    if (newPhone === currentPhone && isVerified) {
+      setError("این شماره قبلا تایید شده است");
       return;
     }
     setError("");
@@ -91,6 +99,7 @@ function EditPhonePage() {
       // TODO: confirm endpoint
       await api.post("/api/user/change-phone/confirm/", { phone: newPhone, code });
       setCurrentPhone(newPhone); // reflect the change immediately, no refetch needed
+      setIsVerified(true);
       setStep("done");
     } catch (err) {
       setError(translateApiError(err));

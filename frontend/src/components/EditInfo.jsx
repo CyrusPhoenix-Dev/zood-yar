@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Pencil, Save, User, Camera, ShieldCheck, ShieldAlert } from "lucide-react";
+import * as DatePickerModule from "react-multi-date-picker";
+// Same two-layer Vite/ESM interop as CounselorCalendarPage.jsx — the
+// real forwardRef component sits at .default.default, not just
+// .default.
+const DatePicker = DatePickerModule.default.default;
+import DateObject from "react-date-object";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+import gregorian from "react-date-object/calendars/gregorian";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/EditInfo.css";
@@ -8,14 +17,25 @@ const fields = [
   { key: "first_name", label: "نام", type: "text" },
   { key: "last_name", label: "نام خانوادگی", type: "text" },
   { key: "national_id", label: "کد ملی", type: "text" },
-  { key: "email", label: "ایمیل", type: "email" },
   { key: "phone", label: "شماره تلفن", type: "tel" },
+];
+
+const genderOptions = [
+  { value: "male", label: "مرد" },
+  { value: "female", label: "زن" },
 ];
 
 function MyProfilePage() {
   const [data, setData] = useState(null); // null while loading
   const [draft, setDraft] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
+  // Holds the Persian DateObject directly, exactly as the picker
+  // library manages it internally. Converting to/from Gregorian on
+  // every render (via useMemo) caused the picker's own internal
+  // selection state to desync from the `value` prop, requiring two
+  // clicks before a selection visibly took. Now it's only converted
+  // once, at save time.
+  const [birthDateObj, setBirthDateObj] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -61,6 +81,20 @@ function MyProfilePage() {
   const handleToggle = async () => {
     if (!isEditing) {
       setDraft(data);
+      // Seed the picker's own state once, converting the saved
+      // Gregorian string to a Persian DateObject a single time when
+      // entering edit mode — not on every render via useMemo, which
+      // was desyncing the picker's internal selection state from its
+      // `value` prop and needing two clicks to register.
+      setBirthDateObj(
+        data?.birth_date
+          ? new DateObject({
+              date: data.birth_date,
+              format: "YYYY-MM-DD",
+              calendar: gregorian,
+            }).convert(persian)
+          : null
+      );
       setIsEditing(true);
       return;
     }
@@ -68,19 +102,35 @@ function MyProfilePage() {
     setIsSaving(true);
     setError("");
     try {
+      // Convert back to Gregorian only now, right before sending —
+      // this is the one place the backend's format is actually needed.
+      const birthDateGregorian = birthDateObj
+        ? birthDateObj.convert(gregorian).format("YYYY-MM-DD")
+        : null;
+
+      const draftWithBirthDate = { ...draft, birth_date: birthDateGregorian };
+
       // If a new avatar was picked, this needs multipart/form-data
       // instead of a plain JSON PATCH.
-      let payload = draft;
+      let payload;
       let config = {};
 
       if (avatarFile) {
         const formData = new FormData();
-        Object.entries(draft).forEach(([k, v]) => {
+        Object.entries(draftWithBirthDate).forEach(([k, v]) => {
           if (k !== "avatar" && v != null) formData.append(k, v);
         });
         formData.append("avatar", avatarFile);
         payload = formData;
         config = { headers: { "Content-Type": "multipart/form-data" } };
+      } else {
+        // No new avatar — never send the avatar field at all, since
+        // `draft.avatar` is just the display URL (or an ObjectURL from a
+        // preview), never real file data. Sending it as JSON trips the
+        // backend's ImageField validation with "not a file" every time,
+        // even when nothing changed.
+        const { avatar, ...rest } = draftWithBirthDate;
+        payload = rest;
       }
 
       const res = await api.patch("/api/user/profile/", payload, config);
@@ -90,7 +140,6 @@ function MyProfilePage() {
     } catch (err) {
       setError(translateApiError(err));
       console.error(err);
-      // stay in edit mode so the user doesn't lose their changes
     } finally {
       setIsSaving(false);
     }
@@ -124,13 +173,11 @@ function MyProfilePage() {
   // verified until the change is actually saved and the backend has
   // confirmed the new verification status.
   const isPhoneVerified = data?.is_phone_verified;
-  const isEmailVerified = data?.is_email_verified;
 
   // If the user has typed a different value than what's saved, the
   // badge would be showing stale info either way — flag that
   // explicitly instead of letting it look authoritative.
   const phoneChangedUnsaved = isEditing && draft?.phone !== data?.phone;
-  const emailChangedUnsaved = isEditing && draft?.email !== data?.email;
 
   return (
     <div className="my-profile-page">
@@ -205,25 +252,6 @@ function MyProfilePage() {
                       </span>
                     )
                   )}
-
-                  {key === "email" && (
-                    emailChangedUnsaved ? (
-                      <span className="phone-verify-badge phone-verify-badge--pending">
-                        <ShieldAlert size={13} />
-                        پس از ذخیره نیاز به تایید مجدد
-                      </span>
-                    ) : isEmailVerified ? (
-                      <span className="phone-verify-badge phone-verify-badge--verified">
-                        <ShieldCheck size={13} />
-                        تایید شده
-                      </span>
-                    ) : (
-                      <span className="phone-verify-badge phone-verify-badge--unverified">
-                        <ShieldAlert size={13} />
-                        تایید نشده
-                      </span>
-                    )
-                  )}
                 </div>
 
                 <input
@@ -237,6 +265,79 @@ function MyProfilePage() {
                 />
               </div>
             ))}
+
+            {/* ===== Gender ===== */}
+            <div className="my-profile-field">
+              <div className="my-profile-field__label-row">
+                <label htmlFor="gender" className="my-profile-field__label">
+                  جنسیت
+                </label>
+              </div>
+              {isEditing ? (
+                <select
+                  id="gender"
+                  className="my-profile-field__input"
+                  value={draft?.gender ?? ""}
+                  onChange={(e) => handleChange("gender", e.target.value)}
+                  disabled={isSaving}
+                >
+                  <option value="">انتخاب نشده</option>
+                  {genderOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="my-profile-field__input"
+                  value={
+                    genderOptions.find((opt) => opt.value === data?.gender)?.label ?? ""
+                  }
+                  readOnly
+                  disabled
+                />
+              )}
+            </div>
+
+            {/* ===== Birth date ===== */}
+            <div className="my-profile-field">
+              <div className="my-profile-field__label-row">
+                <label htmlFor="birth_date" className="my-profile-field__label">
+                  تاریخ تولد
+                </label>
+              </div>
+              {isEditing ? (
+                <DatePicker
+                  value={birthDateObj}
+                  onChange={setBirthDateObj}
+                  calendar={persian}
+                  locale={persian_fa}
+                  calendarPosition="bottom-right"
+                  inputClass="my-profile-field__input"
+                  placeholder="انتخاب تاریخ تولد"
+                  disabled={isSaving}
+                />
+              ) : (
+                <input
+                  id="birth_date"
+                  className="my-profile-field__input"
+                  value={
+                    data?.birth_date
+                      ? new DateObject({
+                          date: data.birth_date,
+                          format: "YYYY-MM-DD",
+                          calendar: gregorian,
+                        })
+                          .convert(persian)
+                          .format("YYYY/MM/DD")
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -11,7 +11,6 @@ function RegisterForm() {
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,9 +25,6 @@ function RegisterForm() {
     }
     if (!firstName.trim() || !lastName.trim()) {
       return "لطفا نام و نام خانوادگی را وارد کنید";
-    }
-    if (!email.trim()) {
-      return "ایمیل الزامی است";
     }
     if (password.length < 8) {
       return "رمز عبور باید حداقل ۸ کاراکتر باشد";
@@ -51,7 +47,6 @@ function RegisterForm() {
     try {
       const res = await api.post("/api/user/register/", {
         username,
-        email,
         first_name: firstName,
         last_name: lastName,
         phone,
@@ -117,22 +112,6 @@ function RegisterForm() {
           />
         </div>
       </div>
-
-      <div className="register-form__field">
-        <label htmlFor="email" className="register-form__label">
-          ایمیل
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className="register-form__input"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="email@example.com"
-        />
-      </div>
-
       <div className="register-form__field">
         <label htmlFor="phone" className="register-form__label">
           شماره تلفن

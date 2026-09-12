@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Phone, Mail, StickyNote, Send, Trash2 } from "lucide-react";
+import { Phone, StickyNote, Send, Trash2 } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorClients.css";
@@ -35,7 +35,7 @@ function CounselorClientsPage() {
           id: b.client_id,
           name: b.client_name,
           phone: b.client_phone,
-          email: b.client_email,
+          avatar: b.client_avatar,
           sessionCount: 0,
         };
       }
@@ -113,11 +113,10 @@ function CounselorClientsPage() {
                   <li key={client.id}>
                     <button
                       type="button"
-                      className={`counselor-client-item ${
-                        client.id === selectedClientId
+                      className={`counselor-client-item ${client.id === selectedClientId
                           ? "counselor-client-item--active"
                           : ""
-                      }`}
+                        }`}
                       onClick={() => handleSelectClient(client.id)}
                     >
                       <span className="counselor-client-item__icon">
@@ -150,9 +149,6 @@ function CounselorClientsPage() {
                   <div className="counselor-client-header__meta">
                     <span>
                       <Phone size={13} /> {selectedClient.phone || "—"}
-                    </span>
-                    <span>
-                      <Mail size={13} /> {selectedClient.email || "—"}
                     </span>
                   </div>
                 </div>
