@@ -93,12 +93,17 @@ function CounselorSlider() {
                 <Star size={14} className="counselor-card__star" />
                 {c.rating != null ? c.rating.toLocaleString("fa-IR") : "بدون امتیاز"}
               </span>
+              {c.years_of_experience > 0 && (
+                <span className="counselor-card__meta-item">
+                  {c.years_of_experience.toLocaleString("fa-IR")} سال سابقه
+                </span>
+              )}
               {c.city && <span className="counselor-card__meta-item">{c.city}</span>}
             </div>
 
             <div className="counselor-card__actions">
               <a
-                href={`/CounselorProfile/${c.slug}`}
+                href={`/CounselorProfile/${c.id}`}
                 className="counselor-card__btn counselor-card__btn--ghost"
               >
                 مشاهده پروفایل

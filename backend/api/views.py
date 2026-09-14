@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
-from django.shortcuts import get_object_or_404
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Avg, Count, F, Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
@@ -24,6 +25,7 @@ from .models import (
     Booking,
     Counselor,
     CounselorCertificate,
+    CounselorGalleryImage,
     CounselorNote,
     Review,
     Specialty,
@@ -37,6 +39,7 @@ from .counselor_serializers import (
     CounselorSelfSerializer,
     CounselorCertificateSerializer,
     CounselorDetailSerializer,
+    CounselorGalleryImageSerializer,
     ReviewSerializer,
     CounselorReviewSerializer,
     PublicCounselorSerializer,
@@ -437,6 +440,46 @@ class CounselorCertificateListCreateView(generics.ListCreateAPIView):
         serializer.save(counselor=self.request.user.counselor_profile)
 
 
+COUNSELOR_GALLERY_MAX_IMAGES = 6
+
+
+class CounselorGalleryListCreateView(generics.ListCreateAPIView):
+    """Public-facing photos of the counselor or their office — shown
+    directly on the profile page, unlike certificates. Capped at
+    COUNSELOR_GALLERY_MAX_IMAGES; enforced here rather than the model,
+    since the count check needs the request's counselor context."""
+
+    serializer_class = CounselorGalleryImageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get_queryset(self):
+        return CounselorGalleryImage.objects.filter(
+            counselor=self.request.user.counselor_profile
+        )
+
+    def perform_create(self, serializer):
+        counselor = self.request.user.counselor_profile
+        if counselor.gallery_images.count() >= COUNSELOR_GALLERY_MAX_IMAGES:
+            raise serializers.ValidationError(
+                {"detail": f"حداکثر {COUNSELOR_GALLERY_MAX_IMAGES} عکس می‌توانید اضافه کنید"}
+            )
+        serializer.save(counselor=counselor)
+
+
+class CounselorGalleryDeleteView(generics.DestroyAPIView):
+    """Lets a counselor remove one of their own gallery photos —
+    scoped to their own counselor_profile, same pattern as
+    AvailabilitySlotDeleteView."""
+
+    serializer_class = CounselorGalleryImageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get_queryset(self):
+        return CounselorGalleryImage.objects.filter(
+            counselor=self.request.user.counselor_profile
+        )
+
+
 class AvailabilitySlotListCreateView(generics.ListCreateAPIView):
     """GET: the logged-in counselor's own slots (their calendar).
     POST: create a new available slot for themselves.
@@ -538,9 +581,13 @@ class CounselorNoteDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class CounselorDetailView(generics.RetrieveAPIView):
     """Public — the full profile page for one counselor. Accepts
-    either the shareable slug (public profile links) or the numeric
-    pk (used internally, e.g. by BookingPage, which only has the
-    numeric Counselor.id from the booking link)."""
+    either the shareable slug (used in public profile links) or the
+    numeric pk (used internally — e.g. BookingPage only has the
+    numeric Counselor.id, not the slug). Uses CounselorDetailSerializer
+    (not the plain listing serializer) since this is the one place the
+    full address and gallery photos should actually be shown — same
+    annotated queryset as the listing views, so rating/booking counts
+    stay consistent everywhere they're shown."""
 
     serializer_class = CounselorDetailSerializer
     permission_classes = [permissions.AllowAny]

@@ -310,6 +310,19 @@
   cursor: not-allowed;
 }
 
+.counselor-profile-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.counselor-profile-gallery__img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
 /* ===========================
    RESPONSIVE
    Desktop: 3 cols x 3 rows (9 cards)

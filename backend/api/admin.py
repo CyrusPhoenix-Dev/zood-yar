@@ -9,6 +9,7 @@ from .models import (
     OtpCode,
     Counselor,
     CounselorCertificate,
+    CounselorGalleryImage,
     AvailabilitySlot,
     Specialty,
 )
@@ -170,6 +171,15 @@ class CounselorCertificateInline(admin.TabularInline):
     extra = 1
 
 
+class CounselorGalleryImageInline(admin.TabularInline):
+    """Public-facing gallery photos — shown here too, mainly so an
+    admin can remove an inappropriate upload without needing a
+    separate moderation view. The 6-photo cap is enforced in the
+    counselor-facing API view, not here — admin isn't bound by it."""
+    model = CounselorGalleryImage
+    extra = 0
+
+
 class AvailabilitySlotInline(admin.TabularInline):
     model = AvailabilitySlot
     extra = 0
@@ -186,6 +196,7 @@ class CounselorAdmin(admin.ModelAdmin):
         "user",
         "license_number",
         "degree",
+        "years_of_experience",
         "session_format",
         "city",
         "is_verified",
@@ -203,7 +214,7 @@ class CounselorAdmin(admin.ModelAdmin):
     # Avoids rendering a dropdown of every single user in the system —
     # requires User.search_fields above to be set for this to work.
     autocomplete_fields = ("user",)
-    inlines = [CounselorCertificateInline, AvailabilitySlotInline]
+    inlines = [CounselorCertificateInline, CounselorGalleryImageInline, AvailabilitySlotInline]
 
     actions = ["mark_verified"]
 

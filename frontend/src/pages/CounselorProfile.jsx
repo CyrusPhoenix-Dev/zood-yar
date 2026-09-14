@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
-import { Star, Users, Send, LogIn, MapPin } from "lucide-react";
+import { Star, Users, Send, LogIn, MapPin, Briefcase } from "lucide-react";
 import api from "../api";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { translateApiError } from "../utils/apiErrors";
@@ -48,6 +48,7 @@ function CounselorProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   // Counselor profile + reviews are public — anyone can see them,
   // logged in or not. The detail endpoint is looked up by slug (the
@@ -156,6 +157,17 @@ function CounselorProfilePage() {
           src={counselor.avatar || "/default-avatar.png"}
           alt={counselor.name}
           className="counselor-profile-avatar"
+          onClick={counselor.avatar ? () => setLightboxImage(counselor.avatar) : undefined}
+          role={counselor.avatar ? "button" : undefined}
+          tabIndex={counselor.avatar ? 0 : undefined}
+          onKeyDown={
+            counselor.avatar
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") setLightboxImage(counselor.avatar);
+                }
+              : undefined
+          }
+          style={counselor.avatar ? { cursor: "pointer" } : undefined}
         />
         <div className="counselor-profile-header__info">
           <h1 className="counselor-profile-name">{counselor.name}</h1>
@@ -169,6 +181,12 @@ function CounselorProfilePage() {
               <Users size={16} />
               {counselor.bookings.toLocaleString("fa-IR")} رزرو
             </span>
+            {counselor.years_of_experience > 0 && (
+              <span className="counselor-profile-meta-item">
+                <Briefcase size={16} />
+                {counselor.years_of_experience.toLocaleString("fa-IR")} سال سابقه
+              </span>
+            )}
             {counselor.session_format && (
               <span className="counselor-profile-meta-item">
                 {sessionFormatLabels[counselor.session_format] || counselor.session_format}
@@ -203,6 +221,30 @@ function CounselorProfilePage() {
         <div className="counselor-profile-card">
           <h2 className="counselor-profile-card__title">درباره</h2>
           <p className="counselor-profile-bio">{counselor.bio}</p>
+        </div>
+      )}
+
+      {/* ===== Gallery — self/room photos, only shown when at least
+          one exists ===== */}
+      {counselor.gallery_images?.length > 0 && (
+        <div className="counselor-profile-card">
+          <h2 className="counselor-profile-card__title">تصاویر</h2>
+          <div className="counselor-profile-gallery">
+            {counselor.gallery_images.map((img) => (
+              <img
+                key={img.id}
+                src={img.image}
+                alt=""
+                className="counselor-profile-gallery__img"
+                onClick={() => setLightboxImage(img.image)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setLightboxImage(img.image);
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -299,6 +341,33 @@ function CounselorProfilePage() {
           </ul>
         )}
       </div>
+
+      {lightboxImage && (
+        <div
+          className="counselor-profile-lightbox"
+          onClick={() => setLightboxImage(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setLightboxImage(null);
+          }}
+        >
+          <button
+            type="button"
+            className="counselor-profile-lightbox__close"
+            onClick={() => setLightboxImage(null)}
+            aria-label="بستن"
+          >
+            ×
+          </button>
+          <img
+            src={lightboxImage}
+            alt=""
+            className="counselor-profile-lightbox__img"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

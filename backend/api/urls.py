@@ -30,6 +30,8 @@ from .views import (
     CounselorNoteDetailView,
     CounselorSelfView,
     CounselorCertificateListCreateView,
+    CounselorGalleryListCreateView,
+    CounselorGalleryDeleteView,
     ReviewCreateView,
     PublicCounselorListView,
     PublicCounselorDirectoryView,
@@ -91,6 +93,16 @@ urlpatterns = [
         "counselor/certificates/",
         CounselorCertificateListCreateView.as_view(),
         name="counselor_certificates",
+    ),
+    path(
+        "counselor/gallery/",
+        CounselorGalleryListCreateView.as_view(),
+        name="counselor_gallery",
+    ),
+    path(
+        "counselor/gallery/<int:pk>/",
+        CounselorGalleryDeleteView.as_view(),
+        name="counselor_gallery_delete",
     ),
 
     # ===== Counselor: availability calendar =====

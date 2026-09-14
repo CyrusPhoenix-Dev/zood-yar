@@ -25,6 +25,17 @@ def counselor_certificate_upload_path(instance, filename):
     unique = uuid.uuid4().hex[:8]
     return f"counselor_certificates/{username}/{username}_{unique}{ext}"
 
+
+def counselor_gallery_upload_path(instance, filename):
+    """Same pattern as certificates — one folder per counselor, unique
+    filename per photo so multiple uploads never collide. Separate
+    folder from certificates since these are public-facing self/room
+    photos, not documents pending admin review."""
+    ext = os.path.splitext(filename)[1]
+    username = instance.counselor.user.username
+    unique = uuid.uuid4().hex[:8]
+    return f"counselor_gallery/{username}/{username}_{unique}{ext}"
+
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "مدیر کل"
@@ -219,6 +230,7 @@ class Counselor(models.Model):
     session_format = models.CharField(
         "نوع جلسه", max_length=10, choices=SessionFormat.choices, default=SessionFormat.ONLINE
     )
+    years_of_experience = models.PositiveIntegerField("سابقه کار (سال)", default=0)
     slug = models.SlugField(
         "لینک اختصاصی", max_length=150, unique=True, blank=True, allow_unicode=True
     )
@@ -249,7 +261,7 @@ class Counselor(models.Model):
                 counter += 1
             self.slug = candidate
         super().save(*args, **kwargs)
-        
+
     def __str__(self):
         return self.user.get_full_name() or self.user.username
 
@@ -260,6 +272,23 @@ class CounselorCertificate(models.Model):
     counselor = models.ForeignKey(Counselor, on_delete=models.CASCADE, related_name="certificates")
     image = models.ImageField(upload_to=counselor_certificate_upload_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+class CounselorGalleryImage(models.Model):
+    """Public-facing photos of the counselor themself or their office
+    — shown on the full profile page, unlike certificates (which are
+    private documents for admin review only). Capped at 6 per
+    counselor; that limit is enforced in the view (perform_create),
+    not here, since a model-level constraint can't easily express
+    "count of related rows" without a signal or custom validation
+    that would be more fragile than just checking it in the view
+    where the request context already exists."""
+    counselor = models.ForeignKey(Counselor, on_delete=models.CASCADE, related_name="gallery_images")
+    image = models.ImageField(upload_to=counselor_gallery_upload_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
 
 
 class AvailabilitySlot(models.Model):

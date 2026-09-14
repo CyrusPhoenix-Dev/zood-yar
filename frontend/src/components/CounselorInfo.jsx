@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, ShieldCheck, ShieldAlert, Upload } from "lucide-react";
+import { Save, ShieldCheck, ShieldAlert, Upload, X } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorInfo.css";
@@ -9,6 +9,8 @@ const sessionFormatOptions = [
   { value: "in_person", label: "حضوری" },
   { value: "both", label: "آنلاین و حضوری" },
 ];
+
+const GALLERY_MAX_IMAGES = 6;
 
 // Some mobile keyboards (Persian Android/iOS keyboards in particular)
 // type actual Persian or Arabic-Indic digits into number inputs
@@ -29,22 +31,27 @@ function CounselorInfoPage() {
   const [specialtyOptions, setSpecialtyOptions] = useState([]);
   const [data, setData] = useState(null);
   const [certificates, setCertificates] = useState([]);
+  const [gallery, setGallery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+  const [galleryError, setGalleryError] = useState("");
 
   useEffect(() => {
     Promise.all([
       api.get("/api/counselor/me/"),
       api.get("/api/specialties/"),
       api.get("/api/counselor/certificates/"),
+      api.get("/api/counselor/gallery/"),
     ])
-      .then(([meRes, specRes, certRes]) => {
+      .then(([meRes, specRes, certRes, galleryRes]) => {
         setData(meRes.data);
         setSpecialtyOptions(specRes.data);
         setCertificates(certRes.data.results ?? certRes.data);
+        setGallery(galleryRes.data.results ?? galleryRes.data);
       })
       .catch((err) => {
         setError(translateApiError(err));
@@ -87,6 +94,7 @@ function CounselorInfoPage() {
         specialties: data.specialties,
         session_price: data.session_price,
         session_format: data.session_format,
+        years_of_experience: data.years_of_experience,
         city: data.city,
         address: data.address,
         slug: data.slug,
@@ -118,6 +126,43 @@ function CounselorInfoPage() {
     } finally {
       setIsUploading(false);
       e.target.value = "";
+    }
+  };
+
+  const handleGalleryUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (gallery.length >= GALLERY_MAX_IMAGES) {
+      setGalleryError(`حداکثر ${GALLERY_MAX_IMAGES.toLocaleString("fa-IR")} عکس می‌توانید اضافه کنید`);
+      e.target.value = "";
+      return;
+    }
+    setGalleryError("");
+    setIsUploadingGallery(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await api.post("/api/counselor/gallery/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setGallery((prev) => [...prev, res.data]);
+    } catch (err) {
+      setGalleryError(translateApiError(err));
+      console.error(err);
+    } finally {
+      setIsUploadingGallery(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleGalleryDelete = async (imageId) => {
+    setGalleryError("");
+    try {
+      await api.delete(`/api/counselor/gallery/${imageId}/`);
+      setGallery((prev) => prev.filter((img) => img.id !== imageId));
+    } catch (err) {
+      setGalleryError(translateApiError(err));
+      console.error(err);
     }
   };
 
@@ -190,6 +235,21 @@ function CounselorInfoPage() {
                 onChange={(e) => {
                   const digitsOnly = toAsciiDigits(e.target.value).replace(/[^\d]/g, "");
                   handleChange("session_price", digitsOnly === "" ? 0 : Number(digitsOnly));
+                }}
+              />
+            </div>
+
+            <div className="counselor-info-field">
+              <label className="counselor-info-field__label">سابقه کار (سال)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="counselor-info-input"
+                value={data.years_of_experience ?? 0}
+                onChange={(e) => {
+                  const digitsOnly = toAsciiDigits(e.target.value).replace(/[^\d]/g, "");
+                  handleChange("years_of_experience", digitsOnly === "" ? 0 : Number(digitsOnly));
                 }}
               />
             </div>
@@ -309,6 +369,47 @@ function CounselorInfoPage() {
               hidden
             />
           </label>
+        </div>
+      </div>
+
+      {/* ===== Gallery — public photos shown on the profile page ===== */}
+      <div className="counselor-info-card">
+        <h2 className="counselor-info-card__title">گالری تصاویر</h2>
+        <p className="counselor-info-hint">
+          عکس‌هایی از خودتان یا محل مشاوره‌تان اضافه کنید تا در پروفایل عمومی
+          شما نمایش داده شود (حداکثر {GALLERY_MAX_IMAGES.toLocaleString("fa-IR")} عکس).
+        </p>
+
+        {galleryError && <p className="counselor-info-error">{galleryError}</p>}
+
+        <div className="counselor-info-certificates">
+          {gallery.map((img) => (
+            <div key={img.id} className="counselor-info-gallery-item">
+              <img src={img.image} alt="تصویر گالری" className="counselor-info-certificate-thumb" />
+              <button
+                type="button"
+                className="counselor-info-gallery-item__delete"
+                onClick={() => handleGalleryDelete(img.id)}
+                aria-label="حذف تصویر"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+
+          {gallery.length < GALLERY_MAX_IMAGES && (
+            <label className="counselor-info-upload-btn">
+              <Upload size={18} />
+              {isUploadingGallery ? "در حال آپلود..." : "افزودن عکس"}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleGalleryUpload}
+                disabled={isUploadingGallery}
+                hidden
+              />
+            </label>
+          )}
         </div>
       </div>
     </div>

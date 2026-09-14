@@ -15,6 +15,7 @@ from .models import (
     Booking,
     Counselor,
     CounselorCertificate,
+    CounselorGalleryImage,
     CounselorNote,
     Review,
     Specialty,
@@ -50,6 +51,7 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
             "specialties",
             "session_price",
             "session_format",
+            "years_of_experience",
             "city",
             "address",
             "slug",
@@ -61,6 +63,17 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
 class CounselorCertificateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CounselorCertificate
+        fields = ["id", "image", "uploaded_at"]
+        read_only_fields = ["id", "uploaded_at"]
+
+
+class CounselorGalleryImageSerializer(serializers.ModelSerializer):
+    """A single public-facing photo (of the counselor or their
+    office). Unlike certificates, these are shown directly on the
+    profile page — no admin review step."""
+
+    class Meta:
+        model = CounselorGalleryImage
         fields = ["id", "image", "uploaded_at"]
         read_only_fields = ["id", "uploaded_at"]
 
@@ -213,6 +226,7 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
             "bookings",
             "session_price",
             "session_format",
+            "years_of_experience",
             "city",
             "specialties",
             "slug",
@@ -231,9 +245,11 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
 
 class CounselorDetailSerializer(PublicCounselorSerializer):
     """The single-counselor profile page — everything the listing
-    shows, plus the full address. Only used by CounselorDetailView,
-    never by the listing/slider views, so address never leaks into a
-    bulk response."""
+    shows, plus the full address and gallery photos. Only used by
+    CounselorDetailView, never by the listing/slider views, so neither
+    leaks into a bulk response."""
+
+    gallery_images = CounselorGalleryImageSerializer(many=True, read_only=True)
 
     class Meta(PublicCounselorSerializer.Meta):
-        fields = PublicCounselorSerializer.Meta.fields + ["address"]
+        fields = PublicCounselorSerializer.Meta.fields + ["address", "gallery_images"]
