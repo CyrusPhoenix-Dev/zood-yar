@@ -1,6 +1,6 @@
 import random
 from datetime import timedelta
-
+from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -199,21 +199,57 @@ class Specialty(models.Model):
 
 
 class Counselor(models.Model):
+    class SessionFormat(models.TextChoices):
+        ONLINE = "online", "آنلاین"
+        IN_PERSON = "in_person", "حضوری"
+        BOTH = "both", "آنلاین و حضوری"
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name="counselor_profile",
         limit_choices_to={"role": User.Role.COUNSELOR},
     )
-    license_number = models.CharField("شماره پروانه", max_length=50, unique=True, blank=True, null=True)
-    nezam_number = models.CharField("شماره نظام", max_length=50, unique=True, blank=True, null=True)
-    degree = models.CharField("مدرک تحصیلی", max_length=100, blank=True, null=True)
+    license_number = models.CharField("شماره پروانه", max_length=50, unique=True, null=True, blank=True)
+    nezam_number = models.CharField("شماره نظام", max_length=50, unique=True, null=True, blank=True)
+    degree = models.CharField("مدرک تحصیلی", max_length=100, default="")
     bio = models.TextField("درباره من", blank=True)
     specialties = models.ManyToManyField(Specialty, related_name="counselors", blank=True)
     session_price = models.PositiveIntegerField("هزینه هر جلسه (تومان)", default=0)
+    session_format = models.CharField(
+        "نوع جلسه", max_length=10, choices=SessionFormat.choices, default=SessionFormat.ONLINE
+    )
+    slug = models.SlugField(
+        "لینک اختصاصی", max_length=150, unique=True, blank=True, allow_unicode=True
+    )
+
+    # Only meaningful when session_format includes in-person sessions —
+    # both optional since an online-only counselor has no use for
+    # either. city kept separate from the full address so it can be
+    # used on its own for directory filtering later, without having
+    # to parse a free-text address string.
+    city = models.CharField("شهر", max_length=100, blank=True)
+    address = models.TextField("آدرس کامل", blank=True)
     is_verified = models.BooleanField("تایید شده توسط ادمین", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Only auto-generate once, when empty — if the counselor edits
+        # it later (via CounselorSelfSerializer), it stays non-empty
+        # from then on, so this never overwrites a manual choice, even
+        # if their name changes afterward.
+        if not self.slug:
+            base = slugify(
+                self.user.get_full_name() or self.user.username, allow_unicode=True
+            ) or f"counselor-{self.user_id}"
+            candidate = base
+            counter = 2
+            while Counselor.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base}-{counter}"
+                counter += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
+        
     def __str__(self):
         return self.user.get_full_name() or self.user.username
 

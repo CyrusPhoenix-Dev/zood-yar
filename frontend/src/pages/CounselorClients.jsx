@@ -114,8 +114,8 @@ function CounselorClientsPage() {
                     <button
                       type="button"
                       className={`counselor-client-item ${client.id === selectedClientId
-                          ? "counselor-client-item--active"
-                          : ""
+                        ? "counselor-client-item--active"
+                        : ""
                         }`}
                       onClick={() => handleSelectClient(client.id)}
                     >
@@ -145,11 +145,14 @@ function CounselorClientsPage() {
             ) : (
               <>
                 <div className="counselor-client-header">
-                  <h2 className="counselor-client-header__name">{selectedClient.name}</h2>
-                  <div className="counselor-client-header__meta">
-                    <span>
-                      <Phone size={13} /> {selectedClient.phone || "—"}
-                    </span>
+                  <img src={selectedClient.avatar} alt={selectedClient.name} />
+                  <div>
+                    <h2 className="counselor-client-header__name">{selectedClient.name}</h2>
+                    <div className="counselor-client-header__meta">
+                      <span>
+                        <Phone size={13} /> {selectedClient.phone || "—"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

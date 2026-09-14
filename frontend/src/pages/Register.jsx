@@ -7,6 +7,8 @@ import { translateApiError } from "../utils/apiErrors";
 
 import "../styles/Register.css";
 
+const PHONE_REGEX = /^09\d{9}$/;
+
 function RegisterForm() {
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -25,6 +27,12 @@ function RegisterForm() {
     }
     if (!firstName.trim() || !lastName.trim()) {
       return "لطفا نام و نام خانوادگی را وارد کنید";
+    }
+    // Phone is required now — the whole point of the post-registration
+    // verification step is confirming a real number, so registering
+    // with a blank one would leave nothing to actually verify.
+    if (!PHONE_REGEX.test(phone.trim())) {
+      return "شماره تلفن معتبر نیست (مثال: 09121234567)";
     }
     if (password.length < 8) {
       return "رمز عبور باید حداقل ۸ کاراکتر باشد";
@@ -55,7 +63,11 @@ function RegisterForm() {
       localStorage.setItem(ACCESS_TOKEN, res.data.access);
       localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
       window.dispatchEvent(new Event("authchange"));
-      navigate("/login");
+      // Registration logs the user in immediately (tokens are already
+      // stored above) — so there's no reason to send them to /login.
+      // They go straight to the phone-verification gate instead;
+      // ProtectedRoute won't let them past it until it's done.
+      navigate("/verify-phone");
     } catch (err) {
       console.error(err.response?.data || err);
       setError(translateApiError(err));

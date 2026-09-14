@@ -125,8 +125,14 @@ urlpatterns = [
     # ===== Public: full searchable/filterable directory =====
     path("counselors/", PublicCounselorDirectoryView.as_view(), name="public_counselor_directory"),
 
-    # ===== Public: one counselor's full profile + their reviews =====
-    path("counselors/<int:pk>/", CounselorDetailView.as_view(), name="counselor_detail"),
+    # ===== Public: one counselor's full profile — looked up by slug,
+    # not numeric id, so this is the URL a counselor can actually share
+    # (e.g. on Instagram) without it looking like an internal DB row
+    # reference. Every other counselor-related endpoint below still
+    # uses the numeric pk internally; the frontend fetches the profile
+    # by slug once and then has the real `id` from that response for
+    # everything else. =====
+    path("counselors/<str:slug>/", CounselorDetailView.as_view(), name="counselor_detail"),
     path(
         "counselors/<int:pk>/reviews/",
         CounselorReviewListView.as_view(),

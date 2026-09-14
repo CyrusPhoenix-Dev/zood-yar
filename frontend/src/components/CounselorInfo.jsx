@@ -4,6 +4,27 @@ import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorInfo.css";
 
+const sessionFormatOptions = [
+  { value: "online", label: "آنلاین" },
+  { value: "in_person", label: "حضوری" },
+  { value: "both", label: "آنلاین و حضوری" },
+];
+
+// Some mobile keyboards (Persian Android/iOS keyboards in particular)
+// type actual Persian or Arabic-Indic digits into number inputs
+// instead of ASCII digits. `Number("۵۰۰۰۰")` returns NaN — which then
+// serializes to null and gets silently rejected — so every numeric
+// input needs its raw value normalized to ASCII before parsing.
+function toAsciiDigits(str) {
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  return str.replace(/[۰-۹٠-٩]/g, (d) => {
+    const p = persian.indexOf(d);
+    if (p !== -1) return String(p);
+    return String(arabic.indexOf(d));
+  });
+}
+
 function CounselorInfoPage() {
   const [specialtyOptions, setSpecialtyOptions] = useState([]);
   const [data, setData] = useState(null);
@@ -48,6 +69,11 @@ function CounselorInfoPage() {
     setSaveSuccess(false);
   };
 
+  // Address only matters once in-person sessions are involved — no
+  // point asking for it (or sending it) when the counselor is
+  // online-only.
+  const showAddressFields = data?.session_format === "in_person" || data?.session_format === "both";
+
   const handleSave = async (e) => {
     e.preventDefault();
     setError("");
@@ -60,6 +86,10 @@ function CounselorInfoPage() {
         bio: data.bio,
         specialties: data.specialties,
         session_price: data.session_price,
+        session_format: data.session_format,
+        city: data.city,
+        address: data.address,
+        slug: data.slug,
       });
       setData(res.data);
       setSaveSuccess(true);
@@ -152,14 +182,67 @@ function CounselorInfoPage() {
             <div className="counselor-info-field">
               <label className="counselor-info-field__label">هزینه هر جلسه (تومان)</label>
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="counselor-info-input"
-                value={data.session_price || 0}
-                onChange={(e) => handleChange("session_price", Number(e.target.value))}
+                value={data.session_price ?? 0}
+                onChange={(e) => {
+                  const digitsOnly = toAsciiDigits(e.target.value).replace(/[^\d]/g, "");
+                  handleChange("session_price", digitsOnly === "" ? 0 : Number(digitsOnly));
+                }}
               />
             </div>
+
+            <div className="counselor-info-field">
+              <label className="counselor-info-field__label">نوع جلسه</label>
+              <select
+                className="counselor-info-input"
+                value={data.session_format || "online"}
+                onChange={(e) => handleChange("session_format", e.target.value)}
+              >
+                {sessionFormatOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="counselor-info-field">
+              <label className="counselor-info-field__label">لینک اختصاصی</label>
+              <input
+                type="text"
+                className="counselor-info-input"
+                value={data.slug || ""}
+                onChange={(e) => handleChange("slug", e.target.value)}
+              />
+            </div>
+            {showAddressFields && (
+              <div className="counselor-info-field">
+                <label className="counselor-info-field__label">شهر</label>
+                <input
+                  type="text"
+                  className="counselor-info-input"
+                  value={data.city || ""}
+                  onChange={(e) => handleChange("city", e.target.value)}
+                  placeholder="مثلا تهران"
+                />
+              </div>
+            )}
           </div>
+
+          {showAddressFields && (
+            <div className="counselor-info-field">
+              <label className="counselor-info-field__label">آدرس کامل</label>
+              <textarea
+                rows={2}
+                className="counselor-info-textarea"
+                value={data.address || ""}
+                onChange={(e) => handleChange("address", e.target.value)}
+                placeholder="آدرس دقیق محل برگزاری جلسات حضوری..."
+              />
+            </div>
+          )}
 
           <div className="counselor-info-field">
             <label className="counselor-info-field__label">درباره من</label>

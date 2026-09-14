@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Avg, Count, F, Q
@@ -36,6 +36,7 @@ from .counselor_serializers import (
     CounselorNoteSerializer,
     CounselorSelfSerializer,
     CounselorCertificateSerializer,
+    CounselorDetailSerializer,
     ReviewSerializer,
     CounselorReviewSerializer,
     PublicCounselorSerializer,
@@ -536,12 +537,21 @@ class CounselorNoteDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class CounselorDetailView(generics.RetrieveAPIView):
-    """Public — the full profile page for one counselor. Uses the same
-    annotated queryset as the listing views, so rating/booking counts
-    stay consistent everywhere they're shown."""
+    """Public — the full profile page for one counselor. Accepts
+    either the shareable slug (public profile links) or the numeric
+    pk (used internally, e.g. by BookingPage, which only has the
+    numeric Counselor.id from the booking link)."""
 
-    serializer_class = PublicCounselorSerializer
+    serializer_class = CounselorDetailSerializer
     permission_classes = [permissions.AllowAny]
+    lookup_field = "slug"
+
+    def get_object(self):
+        lookup_value = self.kwargs["slug"]
+        queryset = self.filter_queryset(self.get_queryset())
+        if lookup_value.isdigit():
+            return get_object_or_404(queryset, pk=lookup_value)
+        return get_object_or_404(queryset, slug=lookup_value)
 
     def get_queryset(self):
         return Counselor.objects.filter(is_verified=True).annotate(

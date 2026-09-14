@@ -16,6 +16,9 @@ import ForgotPassword from './pages/ForgotPassword'
 import CounselorProfile from './pages/CounselorProfile'
 import BookingPage from './pages/BookingPage'
 import BannedPage from './pages/BannedPage'
+import TermsPage from './pages/Terms'
+import PrivacyPage from './pages/Privacy'
+import VerifyPhonePage from './pages/VerifyPhone'
 function Logout() {
   useEffect(() => {
     localStorage.clear();
@@ -46,8 +49,18 @@ function App() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/phoneAuth" element={<PhoneAuth />} />
           <Route path="/logout" element={<Logout />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route
+            path="/verify-phone"
+            element={
+              <ProtectedRoute skipPhoneCheck>
+                <VerifyPhonePage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/BookingPage/:id" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
-          <Route path="/CounselorProfile/:id" element={<CounselorProfile />} />
+          <Route path="/CounselorProfile/:slug" element={<CounselorProfile />} />
           <Route path="/Profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Route>

@@ -10,6 +10,7 @@ from .models import (
     Counselor,
     CounselorCertificate,
     AvailabilitySlot,
+    Specialty,
 )
 
 
@@ -65,7 +66,7 @@ class CustomUserAdmin(UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             "اطلاعات شخصی",
-            {"fields": ("first_name", "last_name", "phone", "national_id",)},
+            {"fields": ("first_name", "last_name", "phone", "national_id", "birth_date", "gender")},
         ),
         (
             "وضعیت تایید",
@@ -147,6 +148,19 @@ class OtpCodeAdmin(admin.ModelAdmin):
 
 
 # ===========================
+# SPECIALTY
+# The counselor category list (family, marriage, individual, etc.) —
+# managed here instead of by hand-editing the DB, so new categories
+# can be added/renamed through a normal admin form.
+# ===========================
+@admin.register(Specialty)
+class SpecialtyAdmin(admin.ModelAdmin):
+    list_display = ("id", "label", "slug")
+    search_fields = ("label", "slug")
+    prepopulated_fields = {"slug": ("label",)}
+
+
+# ===========================
 # COUNSELOR
 # ===========================
 class CounselorCertificateInline(admin.TabularInline):
@@ -172,11 +186,13 @@ class CounselorAdmin(admin.ModelAdmin):
         "user",
         "license_number",
         "degree",
+        "session_format",
+        "city",
         "is_verified",
         "session_price",
         "created_at",
     )
-    list_filter = ("is_verified", "degree")
+    list_filter = ("is_verified", "degree", "session_format", "city")
     search_fields = (
         "user__username",
         "user__first_name",

@@ -93,11 +93,12 @@ function CounselorSlider() {
                 <Star size={14} className="counselor-card__star" />
                 {c.rating != null ? c.rating.toLocaleString("fa-IR") : "بدون امتیاز"}
               </span>
+              {c.city && <span className="counselor-card__meta-item">{c.city}</span>}
             </div>
 
             <div className="counselor-card__actions">
               <a
-                href={`/CounselorProfile/${c.id}`}
+                href={`/CounselorProfile/${c.slug}`}
                 className="counselor-card__btn counselor-card__btn--ghost"
               >
                 مشاهده پروفایل

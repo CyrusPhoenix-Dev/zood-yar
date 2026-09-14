@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
-import { Star, Users, Send, LogIn } from "lucide-react";
+import { Star, Users, Send, LogIn, MapPin } from "lucide-react";
 import api from "../api";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorProfile.css";
+
+const sessionFormatLabels = {
+  online: "آنلاین",
+  in_person: "حضوری",
+  both: "آنلاین و حضوری",
+};
 
 function StarPicker({ value, onChange }) {
   return (
@@ -28,7 +34,7 @@ function StarPicker({ value, onChange }) {
 }
 
 function CounselorProfilePage() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const isAuthenticated = useAuthStatus();
 
   const [counselor, setCounselor] = useState(null);
@@ -43,25 +49,24 @@ function CounselorProfilePage() {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const loadReviews = () => {
-    api
-      .get(`/api/counselors/${id}/reviews/`)
-      .then((res) => setReviews(res.data.results ?? res.data))
-      .catch((err) => console.error(err));
-  };
-
   // Counselor profile + reviews are public — anyone can see them,
-  // logged in or not.
+  // logged in or not. The detail endpoint is looked up by slug (the
+  // shareable link), but reviews/reviewable-booking are still keyed
+  // by the counselor's numeric id — so this has to be sequential, not
+  // Promise.all: we only learn the numeric id once the first request
+  // (by slug) comes back.
   useEffect(() => {
     setIsLoading(true);
     setError("");
+    setCounselor(null);
 
-    Promise.all([
-      api.get(`/api/counselors/${id}/`),
-      api.get(`/api/counselors/${id}/reviews/`),
-    ])
-      .then(([counselorRes, reviewsRes]) => {
+    api
+      .get(`/api/counselors/${slug}/`)
+      .then((counselorRes) => {
         setCounselor(counselorRes.data);
+        return api.get(`/api/counselors/${counselorRes.data.id}/reviews/`);
+      })
+      .then((reviewsRes) => {
         setReviews(reviewsRes.data.results ?? reviewsRes.data);
       })
       .catch((err) => {
@@ -69,21 +74,21 @@ function CounselorProfilePage() {
         console.error(err);
       })
       .finally(() => setIsLoading(false));
-  }, [id]);
+  }, [slug]);
 
   // The "can I review?" check is authenticated-only — skip the call
   // entirely when logged out instead of firing it and catching a 401.
-  // This is what actually gates the review form: an anonymous visitor
-  // never has a reviewableBookingId, so the form never renders for them.
+  // Also waits on `counselor` being loaded, since this needs the
+  // numeric id from that response, not the slug from the URL.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !counselor) {
       setReviewableBookingId(null);
       return;
     }
 
     let isMounted = true;
     api
-      .get(`/api/counselors/${id}/reviewable-booking/`)
+      .get(`/api/counselors/${counselor.id}/reviewable-booking/`)
       .then((res) => {
         if (isMounted) setReviewableBookingId(res.data.booking_id);
       })
@@ -94,7 +99,7 @@ function CounselorProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [id, isAuthenticated]);
+  }, [counselor, isAuthenticated]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
@@ -114,9 +119,9 @@ function CounselorProfilePage() {
       setRating(0);
       setComment("");
       setSubmitSuccess(true);
-      // Not calling loadReviews() here — the new review won't appear
-      // in the public list until an admin approves it, so refetching
-      // now would just show the same list as before and look broken.
+      // Not refetching reviews here — the new review won't appear in
+      // the public list until an admin approves it, so refetching now
+      // would just show the same list as before and look broken.
     } catch (err) {
       setSubmitError(translateApiError(err));
       console.error(err);
@@ -136,6 +141,12 @@ function CounselorProfilePage() {
       </p>
     );
   }
+
+  // Address is only meaningful (and only ever returned by the backend
+  // in a non-empty way) when in-person sessions are actually offered.
+  const showAddress =
+    (counselor.session_format === "in_person" || counselor.session_format === "both") &&
+    counselor.address;
 
   return (
     <div className="counselor-profile-page">
@@ -158,6 +169,17 @@ function CounselorProfilePage() {
               <Users size={16} />
               {counselor.bookings.toLocaleString("fa-IR")} رزرو
             </span>
+            {counselor.session_format && (
+              <span className="counselor-profile-meta-item">
+                {sessionFormatLabels[counselor.session_format] || counselor.session_format}
+              </span>
+            )}
+            {counselor.city && (
+              <span className="counselor-profile-meta-item">
+                <MapPin size={16} />
+                {counselor.city}
+              </span>
+            )}
           </div>
 
           {counselor.specialties?.length > 0 && (
@@ -170,7 +192,7 @@ function CounselorProfilePage() {
             </div>
           )}
 
-          <Link to={`/BookingPage/${id}`} className="counselor-profile-book-btn">
+          <Link to={`/BookingPage/${counselor.id}`} className="counselor-profile-book-btn">
             رزرو نوبت
           </Link>
         </div>
@@ -181,6 +203,18 @@ function CounselorProfilePage() {
         <div className="counselor-profile-card">
           <h2 className="counselor-profile-card__title">درباره</h2>
           <p className="counselor-profile-bio">{counselor.bio}</p>
+        </div>
+      )}
+
+      {/* ===== Address — only for in-person/both, and only when the
+          counselor has actually filled one in ===== */}
+      {showAddress && (
+        <div className="counselor-profile-card">
+          <h2 className="counselor-profile-card__title">
+            <MapPin size={18} />
+            آدرس محل مشاوره
+          </h2>
+          <p className="counselor-profile-bio">{counselor.address}</p>
         </div>
       )}
 

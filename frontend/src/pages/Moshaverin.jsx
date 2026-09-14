@@ -178,6 +178,9 @@ function CounselorsPage() {
                         <Star size={14} className="counselors-page__star" />
                         {c.rating != null ? c.rating.toLocaleString("fa-IR") : "بدون امتیاز"}
                       </span>
+                      {c.city && (
+                        <span className="counselors-page__meta-item">{c.city}</span>
+                      )}
                     </div>
 
                     <div className="counselors-page__actions">

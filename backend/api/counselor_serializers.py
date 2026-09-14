@@ -31,7 +31,10 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
     """What a counselor can edit about their OWN professional info —
     deliberately excludes is_verified (admin-only approval flag; a
     counselor self-verifying would defeat the point of moderation) and
-    user (can't reassign whose profile this is)."""
+    user (can't reassign whose profile this is).
+
+    city/address/session_format are all freely editable here — same
+    trust level as bio/session_price, nothing sensitive."""
 
     specialties = serializers.PrimaryKeyRelatedField(
         queryset=Specialty.objects.all(), many=True, required=False
@@ -46,6 +49,10 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
             "bio",
             "specialties",
             "session_price",
+            "session_format",
+            "city",
+            "address",
+            "slug",
             "is_verified",  # included so the counselor can SEE their status
         ]
         read_only_fields = ["is_verified"]
@@ -177,7 +184,11 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
     """What an anonymous visitor sees on the counselor slider/listing
     — name, photo, bio, and the two real computed numbers (average
     rating, total completed bookings). No contact info, no internal
-    fields (license number, verification status, etc.).
+    fields (license number, verification status, etc.). Includes
+    city (for directory filtering) and session_format (so a listing
+    can show an online/in-person badge) but NOT the full address —
+    that's reserved for the single-counselor detail page, see
+    CounselorDetailSerializer below.
 
     `id` is deliberately left as the default (Counselor's own primary
     key), NOT the related User's id — every detail-side view
@@ -201,7 +212,10 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
             "rating",
             "bookings",
             "session_price",
+            "session_format",
+            "city",
             "specialties",
+            "slug",
         ]
 
     def get_name(self, obj):
@@ -213,3 +227,13 @@ class PublicCounselorSerializer(serializers.ModelSerializer):
         # for display rather than a long float.
         avg = getattr(obj, "rating_avg", None)
         return round(avg, 1) if avg is not None else None
+
+
+class CounselorDetailSerializer(PublicCounselorSerializer):
+    """The single-counselor profile page — everything the listing
+    shows, plus the full address. Only used by CounselorDetailView,
+    never by the listing/slider views, so address never leaks into a
+    bulk response."""
+
+    class Meta(PublicCounselorSerializer.Meta):
+        fields = PublicCounselorSerializer.Meta.fields + ["address"]

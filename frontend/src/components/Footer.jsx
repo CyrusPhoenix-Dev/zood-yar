@@ -8,6 +8,8 @@ const quickLinks = [
   { label: "تماس با ما", href: "/contactus" },
   { label: "مشاوران", href: "/moshaverin" },
   { label: "خدمات", href: "/services" },
+  { label: "قوانین و مقررات", href: "/terms" },
+  { label: "حریم خصوصی", href: "/privacy" },
 ];
 
 const serviceLinks = [
