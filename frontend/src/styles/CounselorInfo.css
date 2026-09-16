@@ -286,3 +286,15 @@
         grid-template-columns: 1fr;
     }
 }
+
+.counselor-info-gallery-item__delete{
+    background-color: transparent;
+    border: none;
+    color: var(--primary);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.5s;
+}
+.counselor-info-gallery-item__delete:hover{
+    rotate: 30deg;
+}

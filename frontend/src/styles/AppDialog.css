@@ -1,0 +1,77 @@
+.app-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+
+.app-dialog-box {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  font-family: var(--font-family);
+}
+
+.app-dialog-box__message {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  margin: 0 0 var(--space-5) 0;
+  white-space: pre-wrap;
+}
+
+.app-dialog-box__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.app-dialog-btn {
+  height: var(--button-height);
+  padding: 0 var(--space-5);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.app-dialog-btn--primary {
+  background: var(--primary);
+  color: var(--text-white);
+  border: none;
+}
+
+.app-dialog-btn--primary:hover {
+  background: var(--primary-hover);
+}
+
+.app-dialog-btn--danger {
+  background: none;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.app-dialog-btn--danger:hover {
+  background: var(--danger);
+  color: var(--text-white);
+}
+
+.app-dialog-btn--ghost {
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.app-dialog-btn--ghost:hover {
+  background: var(--surface-hover);
+}

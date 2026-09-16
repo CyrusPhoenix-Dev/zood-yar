@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-
+from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Avg, Count, F, Q
@@ -30,8 +30,12 @@ from .models import (
     Review,
     Specialty,
 )
-from .sms import send_otp_sms, send_booking_reminder_sms, send_counselor_booking_notice_sms
-from .serializers import UserSerializer, UserProfileSerializer
+from .sms import (
+    send_otp_sms,
+    send_booking_reminder_sms,
+    send_counselor_booking_notice_sms,
+)
+from .serializers import UserSerializer, UserProfileSerializer, serializers
 from .counselor_serializers import (
     AvailabilitySlotSerializer,
     BookingClientSerializer,
@@ -45,9 +49,19 @@ from .counselor_serializers import (
     PublicCounselorSerializer,
     SpecialtySerializer,
 )
+from .models import (
+    CounselorSchedule,
+    ScheduleWorkingDay,
+    ScheduleBreak,
+    REFUND_CUTOFF_DAYS,
+)
+from .counselor_serializers import (
+    CounselorScheduleSerializer,
+    SchedulePreviewRequestSerializer,
+)
+from .schedule_generation import generate_slots, get_holidays_in_range
 
 User = get_user_model()
-
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -368,7 +382,10 @@ class BookSlotView(APIView):
                 )
 
             booking = Booking.objects.create(
-                slot=slot, client=request.user, payment_reference=payment_reference
+                slot=slot,
+                client=request.user,
+                payment_reference=payment_reference,
+                price_at_booking=slot.counselor.session_price,
             )
 
         # Outside the atomic block, so an SMS failure never rolls back
@@ -461,15 +478,19 @@ class CounselorGalleryListCreateView(generics.ListCreateAPIView):
         counselor = self.request.user.counselor_profile
         if counselor.gallery_images.count() >= COUNSELOR_GALLERY_MAX_IMAGES:
             raise serializers.ValidationError(
-                {"detail": f"حداکثر {COUNSELOR_GALLERY_MAX_IMAGES} عکس می‌توانید اضافه کنید"}
+                {
+                    "detail": f"حداکثر {COUNSELOR_GALLERY_MAX_IMAGES} عکس می‌توانید اضافه کنید"
+                }
             )
         serializer.save(counselor=counselor)
 
 
 class CounselorGalleryDeleteView(generics.DestroyAPIView):
     """Lets a counselor remove one of their own gallery photos —
-    scoped to their own counselor_profile, same pattern as
-    AvailabilitySlotDeleteView."""
+    scoped to their own counselor_profile. File cleanup on delete is
+    handled by the post_delete signal in models.py, which covers this
+    view plus any other delete path (admin, cascade from Counselor
+    deletion)."""
 
     serializer_class = CounselorGalleryImageSerializer
     permission_classes = [permissions.IsAuthenticated, IsCounselor]
@@ -478,6 +499,13 @@ class CounselorGalleryDeleteView(generics.DestroyAPIView):
         return CounselorGalleryImage.objects.filter(
             counselor=self.request.user.counselor_profile
         )
+
+    def perform_destroy(self, instance):
+        # Delete the actual file from media/ too — the default
+        # instance.delete() only removes the DB row and would
+        # otherwise leave the image orphaned on disk forever.
+        instance.image.delete(save=False)
+        instance.delete()
 
 
 class AvailabilitySlotListCreateView(generics.ListCreateAPIView):
@@ -492,7 +520,7 @@ class AvailabilitySlotListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return AvailabilitySlot.objects.filter(
             counselor=self.request.user.counselor_profile
-        ).select_related("booking__client")
+        ).prefetch_related("bookings__client")
 
     def perform_create(self, serializer):
         serializer.save(counselor=self.request.user.counselor_profile)
@@ -603,10 +631,14 @@ class CounselorDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         return Counselor.objects.filter(is_verified=True).annotate(
             rating_avg=Avg(
-                "availability_slots__booking__review__rating",
-                filter=Q(availability_slots__booking__review__is_approved=True),
+                "availability_slots__bookings__review__rating",
+                filter=Q(availability_slots__bookings__review__is_approved=True),
             ),
-            booking_count=Count("availability_slots__booking", distinct=True),
+            booking_count=Count(
+                "availability_slots__bookings",
+                filter=Q(availability_slots__bookings__status=Booking.Status.PAID),
+                distinct=True,
+            ),
         )
 
 
@@ -673,6 +705,14 @@ class MyBookingsView(APIView):
                     "time": booking.slot.start_time,
                     "price": counselor.session_price,
                     "session_number": session_numbers[booking.id],
+                    "status": booking.status,
+                    "can_cancel": (
+                        booking.status == Booking.Status.PAID
+                        and timezone.make_aware(
+                            datetime.combine(booking.slot.date, booking.slot.start_time)
+                        )
+                        > timezone.now()
+                    ),
                 }
             )
 
@@ -740,10 +780,14 @@ class PublicCounselorListView(generics.ListAPIView):
             Counselor.objects.filter(is_verified=True)
             .annotate(
                 rating_avg=Avg(
-                    "availability_slots__booking__review__rating",
-                    filter=Q(availability_slots__booking__review__is_approved=True),
+                    "availability_slots__bookings__review__rating",
+                    filter=Q(availability_slots__bookings__review__is_approved=True),
                 ),
-                booking_count=Count("availability_slots__booking", distinct=True),
+                booking_count=Count(
+                    "availability_slots__bookings",
+                    filter=Q(availability_slots__bookings__status=Booking.Status.PAID),
+                    distinct=True,
+                ),
             )
             .order_by(
                 F("rating_avg").desc(nulls_last=True),
@@ -774,10 +818,14 @@ class PublicCounselorDirectoryView(generics.ListAPIView):
     def get_queryset(self):
         queryset = Counselor.objects.filter(is_verified=True).annotate(
             rating_avg=Avg(
-                "availability_slots__booking__review__rating",
-                filter=Q(availability_slots__booking__review__is_approved=True),
+                "availability_slots__bookings__review__rating",
+                filter=Q(availability_slots__bookings__review__is_approved=True),
             ),
-            booking_count=Count("availability_slots__booking", distinct=True),
+            booking_count=Count(
+                "availability_slots__bookings",
+                filter=Q(availability_slots__bookings__status=Booking.Status.PAID),
+                distinct=True,
+            ),
         )
 
         search = self.request.query_params.get("search", "").strip()
@@ -814,3 +862,224 @@ class SpecialtyListView(generics.ListAPIView):
     serializer_class = SpecialtySerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
+
+
+class CounselorScheduleView(generics.RetrieveUpdateAPIView):
+    serializer_class = CounselorScheduleSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get_object(self):
+        schedule, _ = CounselorSchedule.objects.get_or_create(
+            counselor=self.request.user.counselor_profile
+        )
+        return schedule
+
+
+class SchedulePreviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def post(self, request):
+        serializer = SchedulePreviewRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        schedule = get_object_or_404(
+            CounselorSchedule, counselor=request.user.counselor_profile
+        )
+        start_date = serializer.validated_data["start_date"]
+        end_date = serializer.validated_data["end_date"]
+        work_on_holidays = serializer.validated_data["work_on_holidays"]
+
+        holidays = get_holidays_in_range(start_date, end_date)
+
+        candidates = generate_slots(schedule, start_date, end_date, work_on_holidays)
+
+        sample_dates = sorted(set(c["date"] for c in candidates))[:3]
+        sample_days = [
+            {
+                "date": d,
+                "slots": [
+                    {"start_time": c["start_time"], "end_time": c["end_time"]}
+                    for c in candidates
+                    if c["date"] == d
+                ],
+            }
+            for d in sample_dates
+        ]
+
+        return Response(
+            {
+                "count": len(candidates),
+                "sample_days": sample_days,
+                "holidays": holidays,  # [] if none in range — frontend only prompts when non-empty
+            }
+        )
+
+
+class ScheduleGenerateView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def post(self, request):
+        serializer = SchedulePreviewRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        counselor = request.user.counselor_profile
+        schedule = get_object_or_404(CounselorSchedule, counselor=counselor)
+        candidates = generate_slots(
+            schedule,
+            serializer.validated_data["start_date"],
+            serializer.validated_data["end_date"],
+            serializer.validated_data["work_on_holidays"],
+        )
+
+        existing = set(
+            AvailabilitySlot.objects.filter(counselor=counselor).values_list(
+                "date", "start_time"
+            )
+        )
+        to_create = [
+            AvailabilitySlot(
+                counselor=counselor,
+                date=c["date"],
+                start_time=c["start_time"],
+                end_time=c["end_time"],
+                source=AvailabilitySlot.Source.GENERATED,
+            )
+            for c in candidates
+            if (c["date"], c["start_time"]) not in existing
+        ]
+
+        AvailabilitySlot.objects.bulk_create(to_create, ignore_conflicts=True)
+
+        return Response({"created": len(to_create)}, status=status.HTTP_201_CREATED)
+
+
+class ScheduleGenerateView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def post(self, request):
+        serializer = SchedulePreviewRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        counselor = request.user.counselor_profile
+        schedule = get_object_or_404(CounselorSchedule, counselor=counselor)
+        candidates = generate_slots(
+            schedule,
+            serializer.validated_data["start_date"],
+            serializer.validated_data["end_date"],
+        )
+
+        existing = set(
+            AvailabilitySlot.objects.filter(counselor=counselor).values_list(
+                "date", "start_time"
+            )
+        )
+        to_create = [
+            AvailabilitySlot(
+                counselor=counselor,
+                date=c["date"],
+                start_time=c["start_time"],
+                end_time=c["end_time"],
+                source=AvailabilitySlot.Source.GENERATED,
+            )
+            for c in candidates
+            if (c["date"], c["start_time"]) not in existing
+        ]
+
+        # ignore_conflicts as a second safety net against the unique
+        # constraint — the existing-set check above should already
+        # prevent collisions, this just covers any race.
+        AvailabilitySlot.objects.bulk_create(to_create, ignore_conflicts=True)
+
+        return Response({"created": len(to_create)}, status=status.HTTP_201_CREATED)
+
+
+class CancelBookingView(APIView):
+    """Either the client or the counselor on a booking can cancel.
+    Refund eligibility: ≥3 days before session start = refunded;
+    inside that window = no refund. Counselor-initiated cancels
+    always refund — not the client's fault if the counselor cancels."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_related(
+                    "slot", "slot__counselor__user"
+                ).select_for_update(),
+                pk=pk,
+            )
+
+            is_client = request.user.id == booking.client_id
+            is_counselor = request.user.id == booking.slot.counselor.user_id
+            if not (is_client or is_counselor):
+                raise PermissionDenied("شما اجازه لغو این نوبت را ندارید")
+
+            if booking.status != Booking.Status.PAID:
+                return Response(
+                    {"detail": "این نوبت قبلا لغو شده است"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            session_start = timezone.make_aware(
+                datetime.combine(booking.slot.date, booking.slot.start_time)
+            )
+            days_notice = (session_start - timezone.now()).days
+            refunded = is_counselor or days_notice >= REFUND_CUTOFF_DAYS
+
+            booking.status = (
+                Booking.Status.CANCELLED_REFUNDED
+                if refunded
+                else Booking.Status.CANCELLED_NO_REFUND
+            )
+            booking.cancelled_at = timezone.now()
+            booking.cancelled_by = request.user
+            booking.save(update_fields=["status", "cancelled_at", "cancelled_by"])
+
+            booking.slot.is_booked = False
+            booking.slot.save(update_fields=["is_booked"])
+
+        return Response(
+            {"detail": "نوبت لغو شد", "refunded": refunded}, status=status.HTTP_200_OK
+        )
+
+
+class CounselorEarningsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def get(self, request):
+        counselor = request.user.counselor_profile
+        paid_bookings = Booking.objects.filter(
+            slot__counselor=counselor, status=Booking.Status.PAID
+        )
+        total = paid_bookings.aggregate(total=Sum("price_at_booking"))["total"] or 0
+        return Response(
+            {
+                "total_earnings": total,
+                "paid_session_count": paid_bookings.count(),
+            }
+        )
+
+
+class AvailabilitySlotBulkDeleteByDateView(APIView):
+    """Deletes every UNBOOKED slot the counselor has on one date —
+    booked slots are never touched, same rule as the single-slot
+    delete endpoint. Returns counts so the frontend can tell the
+    counselor if some slots on that day survived because they were
+    booked."""
+
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def delete(self, request, date):
+        counselor = request.user.counselor_profile
+        day_slots = AvailabilitySlot.objects.filter(counselor=counselor, date=date)
+
+        booked_count = day_slots.filter(is_booked=True).count()
+        deletable = day_slots.filter(is_booked=False)
+        deleted_count = deletable.count()
+        deletable.delete()
+
+        return Response(
+            {"deleted": deleted_count, "booked_remaining": booked_count},
+            status=status.HTTP_200_OK,
+        )

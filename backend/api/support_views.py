@@ -70,3 +70,26 @@ class TicketReplyCreateView(APIView):
         return Response(
             TicketReplySerializer(reply).data, status=status.HTTP_201_CREATED
         )
+
+class TicketCloseView(APIView):
+    """Lets the ticket's owner close it themselves — one-way from the
+    user side; only staff (via admin) can reopen a closed ticket.
+    Staff aren't allowed to close through this endpoint at all, since
+    that's what RESOLVED is for."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            ticket = SupportTicket.objects.get(pk=pk, user=request.user)
+        except SupportTicket.DoesNotExist:
+            return Response({"detail": "تیکت یافت نشد"}, status=status.HTTP_404_NOT_FOUND)
+
+        if ticket.status == SupportTicket.Status.CLOSED:
+            return Response(
+                {"detail": "این تیکت قبلا بسته شده است"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ticket.status = SupportTicket.Status.CLOSED
+        ticket.save(update_fields=["status"])
+        return Response(SupportTicketSerializer(ticket).data, status=status.HTTP_200_OK)

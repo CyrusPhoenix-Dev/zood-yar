@@ -252,3 +252,18 @@
 .records-page__status--error {
   color: var(--danger);
 }
+
+.records-table__cancel-btn{
+  width: 100px;
+  background-color: var(--primary);
+  border: none;
+  color: white;
+  padding: 5px 0;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: 0.5s;
+}
+.records-table__cancel-btn:hover{
+  background-color: var(--secondary);
+}

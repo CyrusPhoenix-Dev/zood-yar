@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, ShieldCheck, ShieldAlert, Upload, X } from "lucide-react";
+import { Save, ShieldCheck, ShieldAlert, Upload, Trash2 } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorInfo.css";
@@ -392,7 +392,7 @@ function CounselorInfoPage() {
                 onClick={() => handleGalleryDelete(img.id)}
                 aria-label="حذف تصویر"
               >
-                <X size={14} />
+                <Trash2 size={14} />
               </button>
             </div>
           ))}

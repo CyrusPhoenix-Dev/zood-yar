@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { useEffect } from "react";
+import { AppDialogProvider } from "./components/AppDialogProvider";
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AboutUs from './pages/AboutUs';
@@ -35,37 +36,39 @@ function Registering() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
+    <AppDialogProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/banned" element={<BannedPage />} />
-          <Route path="/forgotPassword" element={<ForgotPassword />} />
-          <Route path="/register" element={<Registering />} />
-          <Route path="/aboutus" element={<AboutUs />} />
-          <Route path="/contactus" element={<ContactUs />} />
-          <Route path="/moshaverin" element={<Moshaverin />} />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route path="/phoneAuth" element={<PhoneAuth />} />
-          <Route path="/logout" element={<Logout />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route
-            path="/verify-phone"
-            element={
-              <ProtectedRoute skipPhoneCheck>
-                <VerifyPhonePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/BookingPage/:id" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
-          <Route path="/CounselorProfile/:slug" element={<CounselorProfile />} />
-          <Route path="/Profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+            <Route path="/forgotPassword" element={<ForgotPassword />} />
+            <Route path="/register" element={<Registering />} />
+            <Route path="/aboutus" element={<AboutUs />} />
+            <Route path="/contactus" element={<ContactUs />} />
+            <Route path="/moshaverin" element={<Moshaverin />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/phoneAuth" element={<PhoneAuth />} />
+            <Route path="/logout" element={<Logout />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route
+              path="/verify-phone"
+              element={
+                <ProtectedRoute skipPhoneCheck>
+                  <VerifyPhonePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/BookingPage/:id" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+            <Route path="/CounselorProfile/:slug" element={<CounselorProfile />} />
+            <Route path="/Profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AppDialogProvider>
   );
 }
 

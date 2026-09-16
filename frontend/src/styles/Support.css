@@ -414,3 +414,69 @@
   border-color: var(--focus-outline);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
+
+/* ===========================
+   STATUS BADGE — closed
+=========================== */
+.support-status--closed {
+  color: var(--text-muted);
+  background: var(--surface-hover);
+}
+
+/* ===========================
+   THREAD POPUP OVERLAY
+=========================== */
+.support-thread-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 50;
+}
+
+.support-thread {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  margin-top: 25px;
+}
+
+/* ===========================
+   "بستن تیکت" button
+=========================== */
+.support-thread__close-ticket-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  height: var(--button-height);
+  padding: 0 var(--space-5);
+
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--danger);
+
+  background: none;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.support-thread__close-ticket-btn:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--text-white);
+}
+
+.support-thread__close-ticket-btn:disabled {
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}

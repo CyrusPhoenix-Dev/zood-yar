@@ -1,32 +1,37 @@
-import { useState, useEffect } from "react";
-import { Send, MessageSquare, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Send, MessageSquare, XCircle } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/Support.css";
+import { useAppDialog } from "../components/AppDialogProvider";
 
 const statusMap = {
   pending: { label: "در انتظار بررسی", className: "support-status--pending" },
   in_progress: { label: "در حال بررسی", className: "support-status--progress" },
   resolved: { label: "پاسخ داده شد", className: "support-status--resolved" },
+  closed: { label: "بسته شده", className: "support-status--closed" },
 };
 
 function SupportPage() {
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-
+  const { alertDialog, confirmDialog } = useAppDialog();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ===== Thread view state =====
+  // ===== Thread popup state =====
   const [openTicketId, setOpenTicketId] = useState(null);
   const [openTicket, setOpenTicket] = useState(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
   const [replyError, setReplyError] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
+
+  const threadRef = useRef(null);
 
   const loadTickets = () => {
     api
@@ -42,6 +47,19 @@ function SupportPage() {
   useEffect(() => {
     loadTickets();
   }, []);
+
+  useEffect(() => {
+    if (!openTicketId) return;
+
+    function handleClickOutside(e) {
+      if (threadRef.current && !threadRef.current.contains(e.target)) {
+        closeThread();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openTicketId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,6 +120,26 @@ function SupportPage() {
       console.error(err);
     } finally {
       setIsReplying(false);
+    }
+  };
+
+  const handleCloseTicket = async () => {
+    const confirmed = await confirmDialog("آیا از بستن این تیکت مطمئن هستید؟", { danger: true });
+    if (!confirmed) return;
+
+    setIsClosing(true);
+    setReplyError("");
+    try {
+      const res = await api.post(`/api/support/tickets/${openTicketId}/close/`);
+      setOpenTicket(res.data);
+      setTickets((prev) =>
+        prev.map((t) => (t.id === openTicketId ? { ...t, status: "closed" } : t))
+      );
+    } catch (err) {
+      setReplyError(translateApiError(err));
+      console.error(err);
+    } finally {
+      setIsClosing(false);
     }
   };
 
@@ -222,17 +260,22 @@ function SupportPage() {
             </>
           )}
         </div>
+      </div>
 
-        {/* ===== Ticket thread (opens when "مشاهده گفتگو" is clicked) ===== */}
-        {openTicketId && (
-          <div className="support-card support-thread">
+      {/* ===== Ticket thread popup — click outside to close, same
+          pattern as the counselor calendar's client-info box ===== */}
+      {openTicketId && (
+        <div className="support-thread-overlay">
+          <div className="support-thread support-card" ref={threadRef}>
             <div className="support-thread__header">
               <h2 className="support-card__title">
                 {openTicket ? openTicket.subject : "گفتگو"}
               </h2>
-              <button type="button" className="support-thread__close" onClick={closeThread}>
-                <X size={18} />
-              </button>
+              {openTicket && (
+                <span className={`support-status ${statusMap[openTicket.status].className}`}>
+                  {statusMap[openTicket.status].label}
+                </span>
+              )}
             </div>
 
             {threadLoading ? (
@@ -255,9 +298,8 @@ function SupportPage() {
                     openTicket.replies.map((r) => (
                       <div
                         key={r.id}
-                        className={`support-reply ${
-                          r.is_staff_reply ? "support-reply--staff" : "support-reply--user"
-                        }`}
+                        className={`support-reply ${r.is_staff_reply ? "support-reply--staff" : "support-reply--user"
+                          }`}
                       >
                         <div className="support-reply__header">
                           <span className="support-reply__sender">
@@ -273,29 +315,43 @@ function SupportPage() {
                   )}
                 </div>
 
-                <form className="support-reply-form" onSubmit={handleSendReply}>
-                  <textarea
-                    className="support-reply-input"
-                    rows={2}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="پاسخ خود را بنویسید..."
-                  />
-                  {replyError && <p className="support-form__error">{replyError}</p>}
-                  <button
-                    type="submit"
-                    className="support-form__button"
-                    disabled={isReplying || !replyText.trim()}
-                  >
-                    <Send size={14} />
-                    {isReplying ? "در حال ارسال..." : "ارسال پاسخ"}
-                  </button>
-                </form>
+                {openTicket.status !== "closed" && (
+                  <>
+                    <form className="support-reply-form" onSubmit={handleSendReply}>
+                      <textarea
+                        className="support-reply-input"
+                        rows={2}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="پاسخ خود را بنویسید..."
+                      />
+                      {replyError && <p className="support-form__error">{replyError}</p>}
+                      <button
+                        type="submit"
+                        className="support-form__button"
+                        disabled={isReplying || !replyText.trim()}
+                      >
+                        <Send size={14} />
+                        {isReplying ? "در حال ارسال..." : "ارسال پاسخ"}
+                      </button>
+                    </form>
+
+                    <button
+                      type="button"
+                      className="support-thread__close-ticket-btn"
+                      onClick={handleCloseTicket}
+                      disabled={isClosing}
+                    >
+                      <XCircle size={14} />
+                      {isClosing ? "در حال بستن..." : "بستن تیکت"}
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

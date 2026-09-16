@@ -1,15 +1,25 @@
 import { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/SessionRecors.css";
+import { useAppDialog } from "../components/AppDialogProvider";
+
+const STATUS_LABELS = {
+  paid: "پرداخت شده",
+  cancelled_refunded: "لغو شده (عودت وجه)",
+  cancelled_no_refund: "لغو شده (بدون عودت)",
+};
 
 function SessionRecordsPage() {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState(null);
+  const { alertDialog, confirmDialog } = useAppDialog();
 
-  useEffect(() => {
+  const fetchSessions = () => {
+    setIsLoading(true);
     api
       .get("/api/user/bookings/")
       .then((res) => setSessions(res.data))
@@ -18,6 +28,10 @@ function SessionRecordsPage() {
         console.error(err);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    fetchSessions();
   }, []);
 
   const handleExportPdf = () => {
@@ -25,6 +39,31 @@ function SessionRecordsPage() {
     // rules in SessionRecors.css for why this is preferred over a
     // client-side PDF library for Persian/RTL text.
     window.print();
+  };
+
+  const handleCancel = async (session) => {
+    const confirmed = await confirmDialog(
+      `آیا از لغو نوبت با ${session.doctor} مطمئن هستید؟ عودت وجه بر اساس فاصله زمانی تا جلسه بررسی می‌شود.`,
+      { danger: true }
+    );
+    if (!confirmed) return;
+
+    setCancellingId(session.id);
+    setError("");
+    try {
+      const res = await api.post(`/api/bookings/${session.id}/cancel/`);
+      await alertDialog(
+        res.data.refunded
+          ? "نوبت لغو شد. مبلغ پرداختی عودت داده خواهد شد."
+          : "نوبت لغو شد. با توجه به نزدیک بودن به زمان جلسه، این نوبت مشمول عودت وجه نیست."
+      );
+      fetchSessions();
+    } catch (err) {
+      setError(translateApiError(err));
+      console.error(err);
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const formatDate = (isoDate) => new Date(isoDate).toLocaleDateString("fa-IR");
@@ -50,10 +89,10 @@ function SessionRecordsPage() {
 
           <h1 className="records-card__title records-page__print-only">سوابق جلسات</h1>
 
+          {error && <p className="records-page__status records-page__status--error records-page__no-print">{error}</p>}
+
           {isLoading ? (
             <p className="records-page__status">در حال بارگذاری...</p>
-          ) : error ? (
-            <p className="records-page__status records-page__status--error">{error}</p>
           ) : sessions.length === 0 ? (
             <p className="records-page__status">هنوز جلسه‌ای رزرو نکرده‌اید.</p>
           ) : (
@@ -66,6 +105,8 @@ function SessionRecordsPage() {
                     <th>تاریخ و ساعت</th>
                     <th>شماره جلسه</th>
                     <th>مبلغ</th>
+                    <th>وضعیت</th>
+                    <th className="records-page__no-print">عملیات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -86,6 +127,19 @@ function SessionRecordsPage() {
                       </td>
                       <td>جلسه {s.session_number.toLocaleString("fa-IR")}</td>
                       <td>{formatPrice(s.price)}</td>
+                      <td>{STATUS_LABELS[s.status] || s.status}</td>
+                      <td className="records-page__no-print">
+                        {s.can_cancel && (
+                          <button
+                            type="button"
+                            className="records-table__cancel-btn"
+                            onClick={() => handleCancel(s)}
+                            disabled={cancellingId === s.id}
+                          >
+                            {cancellingId === s.id ? "در حال لغو..." : "لغو نوبت"}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -117,6 +171,20 @@ function SessionRecordsPage() {
                       <span className="records-list__label">مبلغ</span>
                       <span>{formatPrice(s.price)}</span>
                     </div>
+                    <div className="records-list__row">
+                      <span className="records-list__label">وضعیت</span>
+                      <span>{STATUS_LABELS[s.status] || s.status}</span>
+                    </div>
+                    {s.can_cancel && (
+                      <button
+                        type="button"
+                        className="records-table__cancel-btn records-list__cancel-btn"
+                        onClick={() => handleCancel(s)}
+                        disabled={cancellingId === s.id}
+                      >
+                        {cancellingId === s.id ? "در حال لغو..." : "لغو نوبت"}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

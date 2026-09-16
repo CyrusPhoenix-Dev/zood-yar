@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Plus, Trash2, Clock, ChevronRight } from "lucide-react";
 import * as DatePickerModule from "react-multi-date-picker";
+import DateObject from "react-date-object";
+
 // Confirmed by inspecting the module: Vite wraps this package's
 // export in two layers of interop, so the real forwardRef component
 // sits at .default.default, not just .default.
@@ -10,6 +12,8 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import gregorian from "react-date-object/calendars/gregorian";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
+import { useAppDialog } from "../components/AppDialogProvider";
+import ScheduleGenerator from "../components/ScheduleGenerator";
 import "../styles/CounselorCalendar.css";
 
 function toJalaliWeekday(dateStr) {
@@ -23,6 +27,23 @@ function toJalaliWeekday(dateStr) {
   });
 }
 
+function toJalaliDate(gregorianDateStr) {
+  return new DateObject({ date: gregorianDateStr, format: "YYYY-MM-DD", calendar: gregorian })
+    .convert(persian)
+    .setLocale(persian_fa);
+}
+
+function jalaliMonthKey(gregorianDateStr) {
+  const jd = toJalaliDate(gregorianDateStr);
+  return `${jd.year}-${String(jd.month.number).padStart(2, "0")}`;
+}
+
+function jalaliMonthLabel(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const jd = new DateObject({ year, month, day: 1, calendar: persian, locale: persian_fa });
+  return jd.format("MMMM YYYY");
+}
+
 function CounselorCalendarPage() {
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +54,14 @@ function CounselorCalendarPage() {
   const [endTime, setEndTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // ===== Month → day drill-down =====
+  const [selectedMonthKey, setSelectedMonthKey] = useState(null); // "YYYY-MM" or null
+
+  const { alertDialog, confirmDialog } = useAppDialog();
+  const infoBoxRef = useRef(null);
 
   const fetchSlots = async () => {
     try {
@@ -50,6 +79,20 @@ function CounselorCalendarPage() {
     fetchSlots();
   }, []);
 
+  useEffect(() => {
+    if (!selectedClient) return;
+
+    function handleClickOutside(e) {
+      if (infoBoxRef.current && !infoBoxRef.current.contains(e.target)) {
+        setSelectedClient(null);
+        setSelectedBookingId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedClient]);
+
   const handleAddSlot = async (e) => {
     e.preventDefault();
     if (!date || !startTime || !endTime) {
@@ -61,9 +104,14 @@ function CounselorCalendarPage() {
     try {
       // The picker gives us a Jalali DateObject — Django's DateField
       // expects plain Gregorian (YYYY-MM-DD), so convert right before
-      // sending. The user only ever sees/picks Jalali; the backend
-      // only ever sees/stores Gregorian.
-      const gregorianDate = date.convert(gregorian).format("YYYY-MM-DD");
+      // sending. Pulled directly off the converted DateObject's
+      // numeric fields rather than .format(), since .format() renders
+      // digits using the attached locale (Persian numerals), which
+      // Date() can't parse.
+      const g = date.convert(gregorian);
+      const gregorianDate = `${g.year}-${String(g.month.number).padStart(2, "0")}-${String(
+        g.day
+      ).padStart(2, "0")}`;
 
       await api.post("/api/counselor/slots/", {
         date: gregorianDate,
@@ -93,8 +141,68 @@ function CounselorCalendarPage() {
     }
   };
 
-  // Group slots by date so the calendar reads as day-sections, each
-  // containing that day's time blocks in order.
+  const handleDeleteDay = async (dayDate, daySlots) => {
+    const bookedCount = daySlots.filter((s) => s.is_booked).length;
+    const freeCount = daySlots.length - bookedCount;
+
+    if (freeCount === 0) {
+      await alertDialog("همه زمان‌های این روز رزرو شده‌اند و قابل حذف نیستند.");
+      return;
+    }
+
+    const confirmed = await confirmDialog(
+      bookedCount > 0
+        ? `${freeCount} زمان آزاد این روز حذف می‌شود. ${bookedCount} زمان رزرو شده باقی می‌ماند.`
+        : `آیا از حذف همه زمان‌های این روز (${freeCount} زمان) مطمئن هستید؟`,
+      { danger: true }
+    );
+    if (!confirmed) return;
+
+    setError("");
+    try {
+      const res = await api.delete(`/api/counselor/slots/day/${dayDate}/`);
+      fetchSlots();
+      if (res.data.booked_remaining > 0) {
+        await alertDialog(
+          `${res.data.deleted} زمان حذف شد. ${res.data.booked_remaining} زمان رزرو شده باقی ماند.`
+        );
+      }
+    } catch (err) {
+      setError(translateApiError(err));
+      console.error(err);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!selectedBookingId) return;
+    const confirmed = await confirmDialog(
+      `آیا از لغو نوبت ${selectedClient?.name || ""} مطمئن هستید؟`,
+      { danger: true }
+    );
+    if (!confirmed) return;
+
+    setIsCancelling(true);
+    setError("");
+    try {
+      const res = await api.post(`/api/bookings/${selectedBookingId}/cancel/`);
+      await alertDialog(
+        res.data.refunded
+          ? "نوبت لغو شد. مبلغ به کاربر عودت داده خواهد شد."
+          : "نوبت لغو شد."
+      );
+      setSelectedClient(null);
+      setSelectedBookingId(null);
+      fetchSlots();
+    } catch (err) {
+      setError(translateApiError(err));
+      console.error(err);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // Group slots by date so each day-section holds that day's time
+  // blocks in order.
   const groupedByDate = useMemo(() => {
     const groups = {};
     for (const slot of slots) {
@@ -104,14 +212,39 @@ function CounselorCalendarPage() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
 
+  // Group the days themselves by calendar month ("YYYY-MM" from the
+  // Gregorian date string) so the calendar opens on a month list
+  // first, not a flat list of every day — a counselor with months of
+  // generated slots would otherwise be scrolling forever.
+  const groupedByMonth = useMemo(() => {
+    const groups = {};
+    for (const [dayDate, daySlots] of groupedByDate) {
+      const monthKey = jalaliMonthKey(dayDate);
+      if (!groups[monthKey]) groups[monthKey] = [];
+      groups[monthKey].push([dayDate, daySlots]);
+    }
+    // Sort by actual Jalali year/month order, not string order — string
+    // sort would misorder across year boundaries or double-digit months.
+    return Object.entries(groups).sort(([a], [b]) => {
+      const [ay, am] = a.split("-").map(Number);
+      const [by, bm] = b.split("-").map(Number);
+      return ay - by || am - bm;
+    });
+  }, [groupedByDate]);
+
+  const selectedMonthDays = useMemo(() => {
+    if (!selectedMonthKey) return [];
+    const found = groupedByMonth.find(([key]) => key === selectedMonthKey);
+    return found ? found[1] : [];
+  }, [groupedByMonth, selectedMonthKey]);
+
   function OpenInfo(slot) {
-    console.log(slot);
     setSelectedClient(slot.booked_by);
+    setSelectedBookingId(slot.booked_by?.id ?? null);
   }
 
   return (
     <div className="counselor-calendar-page">
-
       <div className="counselor-calendar-content">
         {/* ===== Add new slot ===== */}
         <div className="counselor-calendar-card">
@@ -169,19 +302,70 @@ function CounselorCalendarPage() {
 
         {/* ===== Calendar view ===== */}
         <div className="counselor-calendar-card">
-          <h2 className="counselor-calendar-card__title">تقویم زمان‌های شما</h2>
+          {selectedMonthKey ? (
+            <div className="counselor-calendar-month-header">
+              <button
+                type="button"
+                className="counselor-calendar-back-btn"
+                onClick={() => setSelectedMonthKey(null)}
+              >
+                <ChevronRight size={16} />
+                بازگشت به ماه‌ها
+              </button>
+              <h2 className="counselor-calendar-card__title">
+                {jalaliMonthLabel(selectedMonthKey)}
+              </h2>
+            </div>
+          ) : (
+            <h2 className="counselor-calendar-card__title">تقویم زمان‌های شما</h2>
+          )}
 
           {isLoading ? (
             <p className="counselor-calendar-status">در حال بارگذاری...</p>
-          ) : groupedByDate.length === 0 ? (
+          ) : groupedByMonth.length === 0 ? (
             <p className="counselor-calendar-status">هنوز زمانی ثبت نکرده‌اید.</p>
+          ) : !selectedMonthKey ? (
+            /* ===== Month list ===== */
+            <div className="counselor-calendar-months">
+              {groupedByMonth.map(([monthKey, monthDays]) => {
+                const slotCount = monthDays.reduce((sum, [, s]) => sum + s.length, 0);
+                return (
+                  <button
+                    key={monthKey}
+                    type="button"
+                    className="counselor-calendar-month-card"
+                    onClick={() => setSelectedMonthKey(monthKey)}
+                  >
+                    <span className="counselor-calendar-month-card__title">
+                      {jalaliMonthLabel(monthKey)}
+                    </span>
+                    <span className="counselor-calendar-month-card__meta">
+                      {monthDays.length.toLocaleString("fa-IR")} روز —{" "}
+                      {slotCount.toLocaleString("fa-IR")} زمان
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
+            /* ===== Day list for the selected month ===== */
             <div className="counselor-calendar-days">
-              {groupedByDate.map(([dayDate, daySlots]) => (
+              {selectedMonthDays.map(([dayDate, daySlots]) => (
                 <div className="counselor-calendar-day" key={dayDate}>
-                  <h3 className="counselor-calendar-day__title">
-                    {toJalaliWeekday(dayDate)}
-                  </h3>
+                  <div className="counselor-calendar-day__header">
+                    <h3 className="counselor-calendar-day__title">
+                      {toJalaliWeekday(dayDate)}
+                    </h3>
+                    <button
+                      type="button"
+                      className="counselor-calendar-day__delete-btn"
+                      onClick={() => handleDeleteDay(dayDate, daySlots)}
+                      aria-label="حذف همه زمان‌های این روز"
+                    >
+                      <Trash2 size={14} />
+                      حذف روز
+                    </button>
+                  </div>
                   <div className="counselor-calendar-day__slots">
                     {daySlots.map((slot) => (
                       <div
@@ -189,7 +373,7 @@ function CounselorCalendarPage() {
                         className={`counselor-slot-chip ${slot.is_booked
                           ? "counselor-slot-chip--booked"
                           : "counselor-slot-chip--free"
-                          }`}
+                          } ${slot.source === "generated" ? "counselor-slot-chip--generated" : ""}`}
                       >
                         <Clock size={13} />
                         <span>
@@ -199,8 +383,15 @@ function CounselorCalendarPage() {
                           {slot.is_booked ? "رزرو شده" : "آزاد"}
                         </span>
                         {slot.is_booked && slot.booked_by && (
-                          <button className="counselor-slot-chip__client" onClick={() => OpenInfo(slot)}>
-                            <img src={slot.booked_by.avatar} alt={slot.booked_by.name} className="user_avatar" />
+                          <button
+                            className="counselor-slot-chip__client"
+                            onClick={() => OpenInfo(slot)}
+                          >
+                            <img
+                              src={slot.booked_by.avatar}
+                              alt={slot.booked_by.name}
+                              className="user_avatar"
+                            />
                             <span>{slot.booked_by.name}</span>
                           </button>
                         )}
@@ -222,17 +413,28 @@ function CounselorCalendarPage() {
             </div>
           )}
         </div>
+
+        {/* ===== Auto-generate schedule ===== */}
+        <ScheduleGenerator onGenerated={fetchSlots} />
       </div>
+
       {selectedClient && (
-        <div className="open_info">
-          <img
-            src={selectedClient.avatar}
-            alt={selectedClient.name}
-          />
+        <div className="open_info" ref={infoBoxRef}>
+          <img src={selectedClient.avatar} alt={selectedClient.name} />
 
           <h1>{selectedClient.name}</h1>
           <p>{selectedClient.phone}</p>
-          <button onClick={() => setSelectedClient(null)}>بستن</button>
+
+          {selectedBookingId && (
+            <button
+              type="button"
+              className="open_info__cancel-btn"
+              onClick={handleCancelBooking}
+              disabled={isCancelling}
+            >
+              {isCancelling ? "در حال لغو..." : "لغو نوبت"}
+            </button>
+          )}
         </div>
       )}
     </div>

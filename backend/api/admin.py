@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from .models import SupportTicket, TicketReply
 from .models import Review
+from django.utils.html import format_html
 
 from .models import (
     User,
@@ -12,6 +13,8 @@ from .models import (
     CounselorGalleryImage,
     AvailabilitySlot,
     Specialty,
+    PaymentTransaction,
+    Booking,
 )
 
 
@@ -250,21 +253,60 @@ class TicketReplyInline(admin.TabularInline):
     exclude = ("sender",)
     readonly_fields = ("created_at",)
 
+STATUS_COLORS = {
+    SupportTicket.Status.PENDING: "#f59e0b",
+    SupportTicket.Status.IN_PROGRESS: "#3b82f6",
+    SupportTicket.Status.RESOLVED: "#22c55e",
+    SupportTicket.Status.CLOSED: "#9ca3af",
+}
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(admin.ModelAdmin):
-    list_display = ("id", "subject", "user", "status", "created_at")
+    list_display = ("id", "subject", "user", "status_badge", "created_at")
     list_filter = ("status",)
     search_fields = ("subject", "message", "user__username")
     inlines = [TicketReplyInline]
+    actions = ["mark_resolved"]
+
+    def get_queryset(self, request):
+        # Closed tickets are done, hide them from the default view so
+        # the list isn't cluttered with resolved noise — still
+        # reachable via the status filter in the sidebar.
+        qs = super().get_queryset(request)
+        if not request.GET.get("status__exact"):
+            qs = qs.exclude(status=SupportTicket.Status.CLOSED)
+        return qs
+
+    def status_badge(self, obj):
+        color = STATUS_COLORS.get(obj.status, "#000")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+    status_badge.short_description = "وضعیت"
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for instance in instances:
             if isinstance(instance, TicketReply) and not instance.pk:
                 instance.sender = request.user
+        for instance in instances:
             instance.save()
         formset.save_m2m()
+
+        # Same "staff reply moves ticket to in_progress" rule as
+        # TicketReplyCreateView, applied here too so admin-side
+        # replies get the same status behavior as API-side ones.
+        ticket = form.instance
+        if ticket.status == SupportTicket.Status.PENDING and instances:
+            ticket.status = SupportTicket.Status.IN_PROGRESS
+            ticket.save(update_fields=["status"])
+
+    @admin.action(description="علامت‌گذاری به عنوان پاسخ داده شده")
+    def mark_resolved(self, request, queryset):
+        updated = queryset.update(status=SupportTicket.Status.RESOLVED)
+        self.message_user(request, f"{updated} تیکت به‌روزرسانی شد")
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
@@ -282,3 +324,96 @@ class ReviewAdmin(admin.ModelAdmin):
     def reject_reviews(self, request, queryset):
         updated = queryset.update(is_approved=False)
         self.message_user(request, f"{updated} نظر رد/پنهان شد")
+
+@admin.register(PaymentTransaction)
+class PaymentTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "client_name", "amount", "status",
+        "authority", "reference_id", "booking", "created_at",
+    )
+    list_filter = ("status", "created_at")
+    search_fields = (
+        "client__username", "client__first_name", "client__last_name",
+        "authority", "reference_id",
+    )
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+    readonly_fields = [f.name for f in PaymentTransaction._meta.fields]
+
+    def has_add_permission(self, request):
+        return False  # only created by the real payment flow
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # financial record, keep even failed attempts
+
+    def client_name(self, obj):
+        return obj.client.get_full_name() or obj.client.username
+    client_name.short_description = "کاربر"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("client", "booking")
+    
+@admin.register(Booking)
+class BookingAdmin(admin.ModelAdmin):
+    """Read-only financial ledger — money records shouldn't be
+    hand-edited outside the real booking/cancellation flow, since a
+    raw field edit here would desync status from the slot's is_booked
+    state and skip refund-window logic, SMS notices, etc."""
+
+    list_display = (
+        "id",
+        "client_name",
+        "counselor_name",
+        "session_datetime",
+        "price_at_booking",
+        "status",
+        "payment_reference",
+        "created_at",
+    )
+    list_filter = ("status", "slot__counselor", "created_at")
+    search_fields = (
+        "client__username",
+        "client__first_name",
+        "client__last_name",
+        "slot__counselor__user__username",
+        "payment_reference",
+    )
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    readonly_fields = (
+        "slot",
+        "client",
+        "payment_reference",
+        "price_at_booking",
+        "status",
+        "cancelled_at",
+        "cancelled_by",
+        "created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "client", "slot__counselor__user"
+        )
+
+    def client_name(self, obj):
+        return obj.client.get_full_name() or obj.client.username
+    client_name.short_description = "کاربر"
+
+    def counselor_name(self, obj):
+        counselor = obj.slot.counselor
+        return counselor.user.get_full_name() or counselor.user.username
+    counselor_name.short_description = "مشاور"
+
+    def session_datetime(self, obj):
+        return f"{obj.slot.date} {obj.slot.start_time.strftime('%H:%M')}"
+    session_datetime.short_description = "زمان جلسه"
+    
+

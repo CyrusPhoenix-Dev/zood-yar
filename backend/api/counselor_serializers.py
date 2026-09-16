@@ -19,6 +19,9 @@ from .models import (
     CounselorNote,
     Review,
     Specialty,
+    ScheduleBreak,
+    ScheduleWorkingDay,
+    CounselorSchedule,
 )
 
 
@@ -92,7 +95,7 @@ class AvailabilitySlotSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_booked"]
 
     def get_booked_by(self, obj):
-        booking = getattr(obj, "booking", None)
+        booking = obj.bookings.filter(status=Booking.Status.PAID).order_by("-created_at").first()
         if not booking:
             return None
 
@@ -102,11 +105,12 @@ class AvailabilitySlotSerializer(serializers.ModelSerializer):
             avatar_url = request.build_absolute_uri(avatar_url)
 
         return {
+            "id": booking.id,
             "name": booking.client.get_full_name() or booking.client.username,
             "avatar": avatar_url,
             "phone": booking.client.phone,
         }
-
+    
     def validate(self, data):
         if data["start_time"] >= data["end_time"]:
             raise serializers.ValidationError("زمان پایان باید بعد از زمان شروع باشد")
@@ -138,6 +142,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
             "start_time",
             "end_time",
             "created_at",
+            "status",
         ]
 
     def get_client_name(self, obj):
@@ -253,3 +258,79 @@ class CounselorDetailSerializer(PublicCounselorSerializer):
 
     class Meta(PublicCounselorSerializer.Meta):
         fields = PublicCounselorSerializer.Meta.fields + ["address", "gallery_images"]
+
+class ScheduleBreakSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScheduleBreak
+        fields = ["id", "start_time", "end_time"]
+
+    def validate(self, data):
+        if data["start_time"] >= data["end_time"]:
+            raise serializers.ValidationError("زمان پایان استراحت باید بعد از زمان شروع باشد")
+        return data
+
+
+class ScheduleWorkingDaySerializer(serializers.ModelSerializer):
+    breaks = ScheduleBreakSerializer(many=True, required=False)
+
+    class Meta:
+        model = ScheduleWorkingDay
+        fields = ["id", "weekday", "is_enabled", "start_time", "end_time", "breaks"]
+
+    def validate(self, data):
+        if data.get("is_enabled"):
+            start, end = data.get("start_time"), data.get("end_time")
+            if not start or not end:
+                raise serializers.ValidationError("روزهای فعال باید ساعت کاری داشته باشند")
+            if start >= end:
+                raise serializers.ValidationError("زمان پایان باید بعد از زمان شروع باشد")
+        return data
+
+
+class CounselorScheduleSerializer(serializers.ModelSerializer):
+    working_days = ScheduleWorkingDaySerializer(many=True)
+
+    class Meta:
+        model = CounselorSchedule
+        fields = ["id", "session_duration_minutes", "gap_minutes", "working_days"]
+
+    def validate_session_duration_minutes(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("مدت جلسه باید بیشتر از صفر باشد")
+        return value
+
+    def validate_gap_minutes(self, value):
+        if value < 0:
+            raise serializers.ValidationError("فاصله بین جلسات نمی‌تواند منفی باشد")
+        return value
+
+    def update(self, instance, validated_data):
+        working_days_data = validated_data.pop("working_days", [])
+        instance.session_duration_minutes = validated_data.get(
+            "session_duration_minutes", instance.session_duration_minutes
+        )
+        instance.gap_minutes = validated_data.get("gap_minutes", instance.gap_minutes)
+        instance.save()
+
+        # Full replace of working-day config each save — simplest
+        # correct approach, since the whole set is always sent together
+        # from the frontend form (not partial per-day PATCHes).
+        instance.working_days.all().delete()
+        for wd_data in working_days_data:
+            breaks_data = wd_data.pop("breaks", [])
+            wd = ScheduleWorkingDay.objects.create(schedule=instance, **wd_data)
+            for b in breaks_data:
+                ScheduleBreak.objects.create(working_day=wd, **b)
+
+        return instance
+
+
+class SchedulePreviewRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    work_on_holidays = serializers.BooleanField(default=False)
+
+    def validate(self, data):
+        if data["start_date"] > data["end_date"]:
+            raise serializers.ValidationError("تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد")
+        return data

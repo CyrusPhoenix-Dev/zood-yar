@@ -43,26 +43,32 @@ from .views import (
     MockPaymentView,
     BookSlotView,
     SpecialtyListView,
+    CounselorScheduleView,
+    SchedulePreviewView,
+    ScheduleGenerateView,
+    CancelBookingView,
+    CounselorEarningsView,
+    AvailabilitySlotBulkDeleteByDateView,
 )
-from .support_views import MyTicketListCreateView, TicketDetailView, TicketReplyCreateView
+from .support_views import (
+    MyTicketListCreateView,
+    TicketDetailView,
+    TicketReplyCreateView,
+    TicketCloseView,
+)
 
 urlpatterns = [
     # ===== Auth: username/password (the only login method) =====
     path("token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-
     # ===== Registration =====
     path("user/register/", CreateUserView.as_view(), name="user_register"),
-
     # ===== Profile: get/update the logged-in user's own data =====
     path("user/profile/", UserProfileView.as_view(), name="user_profile"),
-
     # ===== Client: my own session history =====
     path("user/bookings/", MyBookingsView.as_view(), name="my_bookings"),
-
     # ===== Profile: change password (authenticated) =====
     path("user/change-password/", ChangePasswordView.as_view(), name="change_password"),
-
     # ===== Forgot password (public — user isn't logged in yet) =====
     path(
         "user/forgot-password/",
@@ -74,7 +80,6 @@ urlpatterns = [
         ForgotPasswordConfirmView.as_view(),
         name="forgot_password_confirm",
     ),
-
     # ===== Profile: verify/change phone (authenticated, OTP) =====
     path(
         "user/change-phone/request-otp/",
@@ -86,7 +91,6 @@ urlpatterns = [
         ChangePhoneConfirmView.as_view(),
         name="change_phone_confirm",
     ),
-
     # ===== Counselor: my own professional info =====
     path("counselor/me/", CounselorSelfView.as_view(), name="counselor_self"),
     path(
@@ -104,7 +108,6 @@ urlpatterns = [
         CounselorGalleryDeleteView.as_view(),
         name="counselor_gallery_delete",
     ),
-
     # ===== Counselor: availability calendar =====
     path(
         "counselor/slots/",
@@ -116,27 +119,37 @@ urlpatterns = [
         AvailabilitySlotDeleteView.as_view(),
         name="counselor_slot_delete",
     ),
-
     # ===== Counselor: client bookings ("record of users") =====
-    path("counselor/bookings/", CounselorBookingsView.as_view(), name="counselor_bookings"),
-
+    path(
+        "counselor/bookings/",
+        CounselorBookingsView.as_view(),
+        name="counselor_bookings",
+    ),
     # ===== Counselor: private per-client notes =====
-    path("counselor/notes/", CounselorNoteListCreateView.as_view(), name="counselor_notes"),
+    path(
+        "counselor/notes/",
+        CounselorNoteListCreateView.as_view(),
+        name="counselor_notes",
+    ),
     path(
         "counselor/notes/<int:pk>/",
         CounselorNoteDetailView.as_view(),
         name="counselor_note_detail",
     ),
-
     # ===== Reviews (authenticated — a client rating a completed session) =====
     path("reviews/", ReviewCreateView.as_view(), name="review_create"),
-
     # ===== Public: top counselors (no login required) =====
-    path("counselors/top/", PublicCounselorListView.as_view(), name="public_top_counselors"),
-
+    path(
+        "counselors/top/",
+        PublicCounselorListView.as_view(),
+        name="public_top_counselors",
+    ),
     # ===== Public: full searchable/filterable directory =====
-    path("counselors/", PublicCounselorDirectoryView.as_view(), name="public_counselor_directory"),
-
+    path(
+        "counselors/",
+        PublicCounselorDirectoryView.as_view(),
+        name="public_counselor_directory",
+    ),
     # ===== Public: one counselor's full profile — looked up by slug,
     # not numeric id, so this is the URL a counselor can actually share
     # (e.g. on Instagram) without it looking like an internal DB row
@@ -144,32 +157,30 @@ urlpatterns = [
     # uses the numeric pk internally; the frontend fetches the profile
     # by slug once and then has the real `id` from that response for
     # everything else. =====
-    path("counselors/<str:slug>/", CounselorDetailView.as_view(), name="counselor_detail"),
+    path(
+        "counselors/<str:slug>/", CounselorDetailView.as_view(), name="counselor_detail"
+    ),
     path(
         "counselors/<int:pk>/reviews/",
         CounselorReviewListView.as_view(),
         name="counselor_reviews",
     ),
-
     # ===== Authenticated: can the current user review this counselor? =====
     path(
         "counselors/<int:pk>/reviewable-booking/",
         ReviewableBookingView.as_view(),
         name="reviewable_booking",
     ),
-
     # ===== Public: one counselor's open slots (for the booking page) =====
     path(
         "counselors/<int:pk>/slots/",
         CounselorPublicSlotsView.as_view(),
         name="counselor_public_slots",
     ),
-
     # ===== Booking flow =====
     # PLACEHOLDER — replace with real Zarinpal integration later.
     path("payments/mock/", MockPaymentView.as_view(), name="mock_payment"),
     path("slots/<int:pk>/book/", BookSlotView.as_view(), name="book_slot"),
-
     # ===== Public: specialty categories (drives the filter checkboxes) =====
     path("specialties/", SpecialtyListView.as_view(), name="specialty_list"),
     # ===== Support tickets (any logged-in role) =====
@@ -179,5 +190,38 @@ urlpatterns = [
         "support/tickets/<int:pk>/reply/",
         TicketReplyCreateView.as_view(),
         name="ticket_reply",
+    ),
+    path(
+        "counselor/schedule/",
+        CounselorScheduleView.as_view(),
+        name="counselor_schedule",
+    ),
+    path(
+        "counselor/schedule/preview/",
+        SchedulePreviewView.as_view(),
+        name="schedule_preview",
+    ),
+    path(
+        "counselor/schedule/generate/",
+        ScheduleGenerateView.as_view(),
+        name="schedule_generate",
+    ),
+    path(
+        "bookings/<int:pk>/cancel/", CancelBookingView.as_view(), name="cancel_booking"
+    ),
+    path(
+        "counselor/earnings/",
+        CounselorEarningsView.as_view(),
+        name="counselor_earnings",
+    ),
+    path(
+        "support/tickets/<int:pk>/close/",
+        TicketCloseView.as_view(),
+        name="ticket_close",
+    ),
+    path(
+        "counselor/slots/day/<str:date>/",
+        AvailabilitySlotBulkDeleteByDateView.as_view(),
+        name="counselor_slots_day_delete",
     ),
 ]
