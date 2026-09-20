@@ -22,6 +22,7 @@ from .models import (
     ScheduleBreak,
     ScheduleWorkingDay,
     CounselorSchedule,
+    Plan,
 )
 
 
@@ -32,17 +33,10 @@ class SpecialtySerializer(serializers.ModelSerializer):
 
 
 class CounselorSelfSerializer(serializers.ModelSerializer):
-    """What a counselor can edit about their OWN professional info —
-    deliberately excludes is_verified (admin-only approval flag; a
-    counselor self-verifying would defeat the point of moderation) and
-    user (can't reassign whose profile this is).
-
-    city/address/session_format are all freely editable here — same
-    trust level as bio/session_price, nothing sensitive."""
-
     specialties = serializers.PrimaryKeyRelatedField(
         queryset=Specialty.objects.all(), many=True, required=False
     )
+    has_auto_generator_access = serializers.SerializerMethodField()
 
     class Meta:
         model = Counselor
@@ -58,9 +52,17 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
             "city",
             "address",
             "slug",
-            "is_verified",  # included so the counselor can SEE their status
+            "is_verified",
+            "has_auto_generator_access",
         ]
-        read_only_fields = ["is_verified"]
+        read_only_fields = ["is_verified", "has_auto_generator_access"]
+
+    def get_has_auto_generator_access(self, obj):
+        sub = obj.get_active_subscription()
+        return bool(
+            sub
+            and sub.plan.tier in {Plan.Tier.SILVER, Plan.Tier.GOLD, Plan.Tier.COMPANY}
+        )
 
 
 class CounselorCertificateSerializer(serializers.ModelSerializer):
@@ -95,7 +97,11 @@ class AvailabilitySlotSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_booked"]
 
     def get_booked_by(self, obj):
-        booking = obj.bookings.filter(status=Booking.Status.PAID).order_by("-created_at").first()
+        booking = (
+            obj.bookings.filter(status=Booking.Status.PAID)
+            .order_by("-created_at")
+            .first()
+        )
         if not booking:
             return None
 
@@ -110,7 +116,7 @@ class AvailabilitySlotSerializer(serializers.ModelSerializer):
             "avatar": avatar_url,
             "phone": booking.client.phone,
         }
-    
+
     def validate(self, data):
         if data["start_time"] >= data["end_time"]:
             raise serializers.ValidationError("زمان پایان باید بعد از زمان شروع باشد")
@@ -259,6 +265,7 @@ class CounselorDetailSerializer(PublicCounselorSerializer):
     class Meta(PublicCounselorSerializer.Meta):
         fields = PublicCounselorSerializer.Meta.fields + ["address", "gallery_images"]
 
+
 class ScheduleBreakSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScheduleBreak
@@ -266,7 +273,9 @@ class ScheduleBreakSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         if data["start_time"] >= data["end_time"]:
-            raise serializers.ValidationError("زمان پایان استراحت باید بعد از زمان شروع باشد")
+            raise serializers.ValidationError(
+                "زمان پایان استراحت باید بعد از زمان شروع باشد"
+            )
         return data
 
 
@@ -281,9 +290,13 @@ class ScheduleWorkingDaySerializer(serializers.ModelSerializer):
         if data.get("is_enabled"):
             start, end = data.get("start_time"), data.get("end_time")
             if not start or not end:
-                raise serializers.ValidationError("روزهای فعال باید ساعت کاری داشته باشند")
+                raise serializers.ValidationError(
+                    "روزهای فعال باید ساعت کاری داشته باشند"
+                )
             if start >= end:
-                raise serializers.ValidationError("زمان پایان باید بعد از زمان شروع باشد")
+                raise serializers.ValidationError(
+                    "زمان پایان باید بعد از زمان شروع باشد"
+                )
         return data
 
 
@@ -332,5 +345,7 @@ class SchedulePreviewRequestSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["start_date"] > data["end_date"]:
-            raise serializers.ValidationError("تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد")
+            raise serializers.ValidationError(
+                "تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد"
+            )
         return data

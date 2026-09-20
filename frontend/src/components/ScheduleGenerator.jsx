@@ -70,7 +70,13 @@ function ScheduleGenerator({ onGenerated }) {
     const [isPreviewing, setIsPreviewing] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState("");
+    const [hasAccess, setHasAccess] = useState(null);
 
+    useEffect(() => {
+        api.get("/api/counselor/me/")
+            .then((res) => setHasAccess(res.data.has_auto_generator_access))
+            .catch(() => setHasAccess(false)); // fail closed
+    }, []);
     useEffect(() => {
         api
             .get("/api/counselor/schedule/")
@@ -443,12 +449,16 @@ function ScheduleGenerator({ onGenerated }) {
                             </div>
                         </div>
                     ))}
-
+                    {hasAccess === false && (
+                        <p className="schedule-generator__upgrade-notice">
+                            تولید خودکار زمان‌های کاری فقط برای پلن‌های نقره‌ای، طلایی و سازمانی فعال است.
+                        </p>
+                    )}
                     <button
                         type="button"
                         className="counselor-calendar-add-btn"
                         onClick={handleGenerate}
-                        disabled={isGenerating}
+                        disabled={isGenerating || hasAccess === false}
                     >
                         {isGenerating ? "در حال ایجاد..." : "ایجاد زمان‌های کاری"}
                     </button>

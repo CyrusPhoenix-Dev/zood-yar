@@ -113,32 +113,21 @@ class HeroSlideSerializer(serializers.ModelSerializer):
 
 
 class UserSubscriptionSerializer(serializers.ModelSerializer):
+    plan_id = serializers.IntegerField(source="plan.id", read_only=True)
     plan_title = serializers.CharField(source="plan.title", read_only=True)
     plan_image = serializers.ImageField(source="plan.image", read_only=True)
     plan_features = serializers.CharField(source="plan.features", read_only=True)
-    billing_period_label = serializers.CharField(
-        source="get_billing_period_display", read_only=True
-    )
-    coupon_code = serializers.CharField(
-        source="coupon.code", read_only=True, default=None
-    )
+    billing_period_label = serializers.CharField(source="get_billing_period_display", read_only=True)
+    coupon_code = serializers.CharField(source="coupon.code", read_only=True, default=None)
+    display_status = serializers.CharField(read_only=True)
 
     class Meta:
         model = UserSubscription
         fields = [
-            "id",
-            "plan_title",
-            "plan_image",
-            "plan_features",
-            "billing_period_label",
-            "price_at_purchase",
-            "coupon_code",
-            "status",
-            "started_at",
-            "ends_at",
-            "created_at",
+            "id", "plan_id", "plan_title", "plan_image", "plan_features",
+            "billing_period", "billing_period_label", "price_at_purchase",
+            "coupon_code", "status", "display_status", "started_at", "ends_at", "created_at",
         ]
-
 
 class PlanSerializer(serializers.ModelSerializer):
     periods = serializers.SerializerMethodField()

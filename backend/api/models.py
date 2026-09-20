@@ -44,6 +44,23 @@ def plan_image_upload_path(instance, filename):
     unique = uuid.uuid4().hex[:8]
     return f"plan_images/{unique}{ext}"
 
+def compute_subscription_dates(user, plan, billing_period):
+    """started_at is always now (when this purchase happened). ends_at
+    extends from the counselor's current subscription end date if
+    they're renewing the SAME plan while it's still active — so
+    renewing a few days early doesn't throw away the remaining paid
+    time. Otherwise (expired, or no prior subscription) it starts
+    fresh from now."""
+    now = timezone.now()
+    base = now
+    counselor = getattr(user, 'counselor_profile', None)
+    if counselor:
+        current = counselor.get_active_subscription()
+        if current and current.plan_id == plan.id and current.ends_at and current.ends_at > now:
+            base = current.ends_at
+    return now, base + timedelta(days=BILLING_PERIOD_DAYS[billing_period])
+
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
@@ -244,11 +261,16 @@ class Specialty(models.Model):
 
 
 class Counselor(models.Model):
-    PLAN_BRONZE = 'bronze'
-    PLAN_SILVER = 'silver'
-    PLAN_GOLD = 'gold'
-    PLAN_COMPANY = 'company'
-    PLAN_CHOICES = [(PLAN_BRONZE, 'برنزی'), (PLAN_SILVER, 'نقره‌ای'),(PLAN_GOLD,'طلایی'),(PLAN_COMPANY,'سازمانی')]
+    PLAN_BRONZE = "bronze"
+    PLAN_SILVER = "silver"
+    PLAN_GOLD = "gold"
+    PLAN_COMPANY = "company"
+    PLAN_CHOICES = [
+        (PLAN_BRONZE, "برنزی"),
+        (PLAN_SILVER, "نقره‌ای"),
+        (PLAN_GOLD, "طلایی"),
+        (PLAN_COMPANY, "سازمانی"),
+    ]
 
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_BRONZE)
     plan_expires_at = models.DateTimeField(null=True, blank=True)
@@ -256,21 +278,26 @@ class Counselor(models.Model):
     @property
     def is_plan_active(self):
         return bool(self.plan_expires_at and self.plan_expires_at > timezone.now())
+
     def get_active_subscription(self):
         return (
-            UserSubscription.objects
-            .filter(user_id=self.user_id, status=UserSubscription.Status.ACTIVE, ends_at__gt=timezone.now())
-            .order_by('-ends_at')
+            UserSubscription.objects.filter(
+                user_id=self.user_id,
+                status=UserSubscription.Status.ACTIVE,
+                ends_at__gt=timezone.now(),
+            )
+            .order_by("-ends_at")
             .first()
         )
+
     def get_last_subscription_end(self):
         latest = (
-            UserSubscription.objects
-            .filter(user_id=self.user_id)
-            .order_by('-ends_at')
+            UserSubscription.objects.filter(user_id=self.user_id)
+            .order_by("-ends_at")
             .first()
         )
         return latest.ends_at if latest else None
+
     class SessionFormat(models.TextChoices):
         ONLINE = "online", "آنلاین"
         IN_PERSON = "in_person", "حضوری"
@@ -337,6 +364,30 @@ class Counselor(models.Model):
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
+
+    is_purged = models.BooleanField(default=False)
+    purged_at = models.DateTimeField(null=True, blank=True)
+
+    def purge(self):
+        if self.is_purged:
+            return
+        self.bio = ""
+        self.license_number = None
+        self.nezam_number = None
+        self.degree = None
+        self.address = ""
+        self.city = ""
+        self.certificates.all().delete()
+        self.gallery_images.all().delete()
+        self.is_purged = True
+        self.purged_at = timezone.now()
+        self.save()
+
+        self.user.first_name = "کاربر"
+        self.user.last_name = "حذف‌شده"
+        self.user.phone = ""
+        self.user.national_id = None
+        self.user.save()
 
 
 class CounselorCertificate(models.Model):
@@ -484,19 +535,31 @@ class Plan(models.Model):
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    is_free = models.BooleanField(
+        "رایگان",
+        default=False,
+        help_text="در صورت فعال بودن، این پلن بدون نیاز به پرداخت فعال می‌شود",
+    )
+
     class Tier(models.TextChoices):
-        BRONZE = 'bronze', 'برنزی'
-        SILVER = 'silver', 'نقره‌ای'
-        GOLD = 'gold', 'طلایی'
-        COMPANY = 'company', 'سازمانی'
+        BRONZE = "bronze", "برنزی"
+        SILVER = "silver", "نقره‌ای"
+        GOLD = "gold", "طلایی"
+        COMPANY = "company", "سازمانی"
 
     tier = models.CharField(max_length=20, choices=Tier.choices, default=Tier.BRONZE)
-    
+    TIER_ORDER = {
+        Tier.BRONZE: 0,
+        Tier.SILVER: 1,
+        Tier.GOLD: 2,
+        Tier.COMPANY: 3,
+    }
     class Meta:
         ordering = ["order", "created_at"]
 
     def price_for_period(self, period):
+        if self.is_free:
+            return 0
         return {
             BillingPeriod.MONTHLY: self.price,
             BillingPeriod.SIX_MONTHS: self.price_six_months,
@@ -519,6 +582,7 @@ def delete_plan_image(sender, instance, **kwargs):
     if instance.image:
         instance.image.delete(save=False)
 
+
 class BillingPeriod(models.TextChoices):
     MONTHLY = "monthly", "ماهانه"
     SIX_MONTHS = "six_months", "۶ ماهه"
@@ -530,6 +594,7 @@ BILLING_PERIOD_DAYS = {
     BillingPeriod.SIX_MONTHS: 182,
     BillingPeriod.YEARLY: 365,
 }
+
 
 class UserSubscription(models.Model):
     class Status(models.TextChoices):
@@ -558,7 +623,15 @@ class UserSubscription(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     ends_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    @property
+    def is_currently_active(self):
+        return self.status == self.Status.ACTIVE and bool(self.ends_at) and self.ends_at > timezone.now()
 
+    @property
+    def display_status(self):
+        if self.status == self.Status.ACTIVE and not self.is_currently_active:
+            return "expired"
+        return self.status
 
 class PaymentTransaction(models.Model):
     """One row per payment attempt — created the moment a client is
@@ -965,6 +1038,3 @@ class PlanSale(models.Model):
 
     def __str__(self):
         return f"{self.plan.title} — {self.get_discount_type_display()}"
-
-
-

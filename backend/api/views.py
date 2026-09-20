@@ -21,6 +21,7 @@ from django.urls import reverse
 from .zarinpal import request_payment, verify_payment
 from .token_serializers import CustomTokenObtainPairSerializer
 from django.conf import settings
+from .permissions import HasAutoGeneratorAccess
 
 from .models import (
     OtpCode,
@@ -44,6 +45,7 @@ from .models import (
     Coupon,
     BillingPeriod,
     BILLING_PERIOD_DAYS,
+    compute_subscription_dates,
 )
 from .sms import (
     send_otp_sms,
@@ -712,7 +714,7 @@ class CounselorDetailView(generics.RetrieveAPIView):
         return get_object_or_404(queryset, slug=lookup_value)
 
     def get_queryset(self):
-        return Counselor.objects.filter(is_verified=True).annotate(
+        return Counselor.objects.filter(is_verified=True, is_purged=False).annotate(
             rating_avg=Avg(
                 "availability_slots__bookings__review__rating",
                 filter=Q(availability_slots__bookings__review__is_approved=True),
@@ -901,7 +903,7 @@ class PublicCounselorDirectoryView(generics.ListAPIView):
     pagination_class = CounselorDirectoryPagination
 
     def get_queryset(self):
-        queryset = Counselor.objects.filter(is_verified=True).annotate(
+        queryset = Counselor.objects.filter(is_verified=True, is_purged=False).annotate(
             rating_avg=Avg(
                 "availability_slots__bookings__review__rating",
                 filter=Q(availability_slots__bookings__review__is_approved=True),
@@ -1001,7 +1003,7 @@ class SchedulePreviewView(APIView):
 
 
 class ScheduleGenerateView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+    permission_classes = [permissions.IsAuthenticated, IsCounselor, HasAutoGeneratorAccess]
 
     def post(self, request):
         serializer = SchedulePreviewRequestSerializer(data=request.data)
@@ -1199,6 +1201,16 @@ class SubscriptionPurchaseInitView(APIView):
     def post(self, request, plan_id):
         plan = get_object_or_404(Plan, pk=plan_id, is_active=True)
 
+        counselor = getattr(request.user, 'counselor_profile', None)
+        if counselor:
+            current_sub = counselor.get_active_subscription()
+            if current_sub and plan.id != current_sub.plan_id:
+                if Plan.TIER_ORDER[plan.tier] <= Plan.TIER_ORDER[current_sub.plan.tier]:
+                    return Response(
+                        {"detail": "امکان تغییر به پلن هم‌سطح یا پایین‌تر وجود ندارد"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         period = request.data.get("billing_period", BillingPeriod.MONTHLY)
         if period not in BillingPeriod.values:
             return Response({"detail": "بازه پرداخت نامعتبر است"}, status=400)
@@ -1256,10 +1268,12 @@ class SubscriptionPurchaseInitView(APIView):
         return Response({"pay_url": result["pay_url"]})
 
     def _activate(self, subscription):
-        now = timezone.now()
+        started_at, ends_at = compute_subscription_dates(
+            subscription.user, subscription.plan, subscription.billing_period
+        )
         subscription.status = UserSubscription.Status.ACTIVE
-        subscription.started_at = now
-        subscription.ends_at = now + timedelta(days=BILLING_PERIOD_DAYS[subscription.billing_period])
+        subscription.started_at = started_at
+        subscription.ends_at = ends_at
         subscription.save(update_fields=["status", "started_at", "ends_at"])
 
 class SubscriptionVerifyView(APIView):
@@ -1293,10 +1307,10 @@ class SubscriptionVerifyView(APIView):
             transaction.save(update_fields=["status", "reference_id"])
 
             sub = transaction.subscription
-            now = timezone.now()
+            started_at, ends_at = compute_subscription_dates(sub.user, sub.plan, sub.billing_period)
             sub.status = UserSubscription.Status.ACTIVE
-            sub.started_at = now
-            sub.ends_at = now + timedelta(days=BILLING_PERIOD_DAYS[sub.billing_period])
+            sub.started_at = started_at
+            sub.ends_at = ends_at
             sub.save(update_fields=["status", "started_at", "ends_at"])
 
             if sub.coupon:

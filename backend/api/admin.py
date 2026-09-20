@@ -482,47 +482,41 @@ class PlanSaleInline(admin.TabularInline):
     
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ("title", "price", "price_six_months", "price_yearly", "order", "is_active", "created_at")
-    list_editable = ("order", "is_active")
+    list_display = ("title", "price", "price_six_months", "price_yearly", "is_free", "order", "is_active", "created_at")
+    list_editable = ("order", "is_active", "is_free")
+    search_fields = ("title",)
     ordering = ("order",)
     inlines = [PlanSaleInline]
 
 
 @admin.register(UserSubscription)
 class UserSubscriptionAdmin(admin.ModelAdmin):
-    """Read-only — same principle as BookingAdmin: subscription status
-    should only change through the real purchase/verify flow, never a
-    hand-edited field, or it'll desync from what Zarinpal actually
-    confirmed."""
-
     list_display = (
-        "user",
-        "plan",
-        "price_at_purchase",
-        "status",
-        "started_at",
-        "created_at",
+        "user", "plan", "price_at_purchase", "status", "display_status_badge",
+        "started_at", "ends_at", "created_at",
     )
     list_filter = ("status", "plan")
     search_fields = ("user__username", "user__first_name", "user__last_name")
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
-    readonly_fields = (
-        "user",
-        "plan",
-        "price_at_purchase",
-        "status",
-        "started_at",
-        "created_at",
-    )
+    autocomplete_fields = ("user", "plan")
+
+    def display_status_badge(self, obj):
+        return obj.display_status
+    display_status_badge.short_description = "وضعیت واقعی"
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.transactions.exists():
+            return [f.name for f in UserSubscription._meta.fields]
+        return []
 
     def has_add_permission(self, request):
-        return False
+        return True
 
     def has_delete_permission(self, request, obj=None):
-        return False
-
-
+        if obj and obj.transactions.exists():
+            return False
+        return True
 
 
 
@@ -541,3 +535,4 @@ class CouponAdmin(admin.ModelAdmin):
     )
     list_editable = ("is_active",)
     search_fields = ("code",)
+

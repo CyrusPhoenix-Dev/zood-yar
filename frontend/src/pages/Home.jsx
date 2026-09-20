@@ -3,7 +3,7 @@ import Service from '../components/Service'
 import TeamSlider from '../components/TeamSlider'
 import Quote from '../components/Quote'
 import AboutSection from '../components/AboutSection'
-import PlansSection from '../components/PlansSection'
+import PlansSection from "../components/PlansSection";
 
 function Home() {
     return (
@@ -11,8 +11,8 @@ function Home() {
             <HeroSlider></HeroSlider>
             <Service></Service>
             <TeamSlider></TeamSlider>
-            <PlansSection></PlansSection>
             <Quote></Quote>
+            <PlansSection></PlansSection>
             <AboutSection></AboutSection>
         </>
     );

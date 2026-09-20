@@ -193,6 +193,8 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  height: 50px;
+  overflow-y: scroll;
 }
 
 .counselors-page__meta {
@@ -350,4 +352,8 @@
   .counselors-page__grid {
     grid-template-columns: 1fr;
   }
+}
+.counselor-card__description{
+  height: 50px;
+  overflow-y: scroll;
 }

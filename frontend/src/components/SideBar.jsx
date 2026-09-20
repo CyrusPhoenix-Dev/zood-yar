@@ -8,6 +8,7 @@ import {
   UserRoundArrowLeft,
   RectangleEllipsis,
   CreditCard,
+  BanknoteArrowDown,
 } from "lucide-react";
 import api from "../api";
 import "../styles/SideBar.css";
@@ -15,10 +16,10 @@ import "../styles/SideBar.css";
 const navItems = [
   { label: "ویرایش پروفایل", icon: UserCog, section: "editInfo" },
   { label: "وقت های من", icon: FileText, section: "sessions" },
-  { label: "اشتراک‌های من", icon: CreditCard, section: "subscriptions" },
   { label: "تایید شماره همراه", icon: RectangleEllipsis, section: "phoneAuth" },
   { label: "ویرایش رمزعبور", icon: Key, section: "resetPassword" },
   { label: "پشتیبانی", icon: LifeBuoy, section: "support" },
+  { label: "اشتراک‌های من", icon: CreditCard, section: "subscriptions", counselorOnly: true },
   { label: "اطلاعات مشاور", icon: LifeBuoy, section: "CounselorInfo", counselorOnly: true },
   { label: "تقویم من", icon: CalendarDays, section: "counselorCalender", counselorOnly: true },
   { label: "مراجعین من", icon: UserRoundArrowLeft, section: "counselorClients", counselorOnly: true },

@@ -136,6 +136,8 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  height: 50px;
+  overflow-y: scroll;
 }
 
 .counselor-card__meta {

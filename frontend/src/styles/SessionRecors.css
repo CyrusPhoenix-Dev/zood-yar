@@ -550,3 +550,62 @@
     display: none !important;
   }
 }
+
+.records-table__renew-btn {
+  width: 100px;
+  background-color: var(--secondary);
+  border: none;
+  color: white;
+  padding: 5px 0;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: 0.5s;
+}
+.records-table__renew-btn:hover {
+  background-color: var(--secondary-hover, var(--secondary));
+}
+.records-table__renew-btn:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.subscription-detail-box__renew-btn {
+  width: 100%;
+  height: 40px;
+  background-color: var(--secondary);
+  border: none;
+  color: white;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.subscription-detail-box__renew-btn:hover:not(:disabled) {
+  background-color: var(--secondary-hover, var(--secondary));
+}
+.subscription-detail-box__renew-btn:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}
+.records-list__renew-btn {
+  width: 100%;
+  margin-top: var(--space-2);
+  background-color: var(--secondary);
+  border: none;
+  color: white;
+  padding: 8px 0;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: 0.5s;
+}
+.records-list__renew-btn:hover {
+  background-color: var(--secondary-hover, var(--secondary));
+}
+.records-list__renew-btn:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}

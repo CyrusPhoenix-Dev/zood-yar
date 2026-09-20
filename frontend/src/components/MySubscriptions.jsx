@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/SessionRecors.css";
-
+import { useAppDialog } from "./AppDialogProvider";
 const STATUS_LABELS = {
     pending: "در انتظار پرداخت",
     active: "فعال",
+    expired: "منقضی شده",
     cancelled: "لغو شده",
 };
 
@@ -15,7 +16,8 @@ function MySubscriptions() {
     const [error, setError] = useState("");
     const [selectedSubscription, setSelectedSubscription] = useState(null);
     const detailBoxRef = useRef(null);
-
+    const [renewingId, setRenewingId] = useState(null);
+    const { alertDialog } = useAppDialog();
     useEffect(() => {
         if (!selectedSubscription) return;
 
@@ -43,7 +45,29 @@ function MySubscriptions() {
     const formatDate = (isoDate) => new Date(isoDate).toLocaleDateString("fa-IR");
     const formatPrice = (price) =>
         price > 0 ? `${price.toLocaleString("fa-IR")} تومان` : "—";
+    const handleRenew = async (subscription) => {
+        setRenewingId(subscription.id);
+        setError("");
+        try {
+            const res = await api.post(`/api/plans/${subscription.plan_id}/purchase/`, {
+                billing_period: subscription.billing_period,
+            });
+            if (res.data.free) {
+                await alertDialog("اشتراک شما با موفقیت تمدید شد.");
+                const refreshed = await api.get("/api/user/subscriptions/");
+                setSubscriptions(refreshed.data);
+            } else {
+                window.location.href = res.data.pay_url;
+            }
+        } catch (err) {
+            setError(translateApiError(err));
+            console.error(err);
+        } finally {
+            setRenewingId(null);
+        }
+    };
 
+    const canRenew = (s) => s.display_status === "active" || s.display_status === "expired";
     return (
         <div className="records-page">
             <div className="records-content">
@@ -65,8 +89,10 @@ function MySubscriptions() {
                                         <th>پلن</th>
                                         <th>بازه</th>
                                         <th>تاریخ خرید</th>
+                                        <th>تاریخ انقضا</th>
                                         <th>مبلغ</th>
                                         <th>وضعیت</th>
+                                        <th>تمدید</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -75,19 +101,28 @@ function MySubscriptions() {
                                             <td>
                                                 <div className="records-table__doctor">
                                                     {s.plan_image && (
-                                                        <img
-                                                            src={s.plan_image}
-                                                            alt={s.plan_title}
-                                                            className="records-table__avatar"
-                                                        />
+                                                        <img src={s.plan_image} alt={s.plan_title} className="records-table__avatar" />
                                                     )}
                                                     <span>{s.plan_title}</span>
                                                 </div>
                                             </td>
                                             <td>{s.billing_period_label}</td>
                                             <td>{formatDate(s.created_at)}</td>
+                                            <td>{s.ends_at ? formatDate(s.ends_at) : "—"}</td>
                                             <td>{formatPrice(s.price_at_purchase)}</td>
-                                            <td>{STATUS_LABELS[s.status] || s.status}</td>
+                                            <td>{STATUS_LABELS[s.display_status] || s.display_status}</td>
+                                            <td>
+                                                {canRenew(s) && (
+                                                    <button
+                                                        type="button"
+                                                        className="records-table__renew-btn"
+                                                        onClick={(e) => { e.stopPropagation(); handleRenew(s); }}
+                                                        disabled={renewingId === s.id}
+                                                    >
+                                                        {renewingId === s.id ? "در حال انتقال..." : "تمدید"}
+                                                    </button>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -116,6 +151,10 @@ function MySubscriptions() {
                                             <span>{formatDate(s.created_at)}</span>
                                         </div>
                                         <div className="records-list__row">
+                                            <span className="records-list__label">تاریخ انقضا</span>
+                                            <span>{s.ends_at ? formatDate(s.ends_at) : "—"}</span>
+                                        </div>
+                                        <div className="records-list__row">
                                             <span className="records-list__label">بازه</span>
                                             <span>{s.billing_period_label}</span>
                                         </div>
@@ -125,8 +164,18 @@ function MySubscriptions() {
                                         </div>
                                         <div className="records-list__row">
                                             <span className="records-list__label">وضعیت</span>
-                                            <span>{STATUS_LABELS[s.status] || s.status}</span>
+                                            <span>{STATUS_LABELS[s.display_status] || s.display_status}</span>
                                         </div>
+                                        {canRenew(s) && (
+                                            <button
+                                                type="button"
+                                                className="records-table__renew-btn"
+                                                onClick={(e) => { e.stopPropagation(); handleRenew(s); }}
+                                                disabled={renewingId === s.id}
+                                            >
+                                                {renewingId === s.id ? "در حال انتقال..." : "تمدید"}
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -150,14 +199,14 @@ function MySubscriptions() {
                         </h2>
 
                         <span
-                            className={`support-status ${selectedSubscription.status === "active"
+                            className={`support-status ${selectedSubscription.display_status === "active"
                                 ? "support-status--resolved"
-                                : selectedSubscription.status === "pending"
+                                : selectedSubscription.display_status === "pending"
                                     ? "support-status--pending"
                                     : "support-status--closed"
                                 }`}
                         >
-                            {STATUS_LABELS[selectedSubscription.status] || selectedSubscription.status}
+                            {STATUS_LABELS[selectedSubscription.display_status] || selectedSubscription.display_status}
                         </span>
 
                         <ul className="subscription-detail-box__features">
@@ -173,6 +222,7 @@ function MySubscriptions() {
                             <span>{selectedSubscription.billing_period_label}</span>
                             <span>{formatPrice(selectedSubscription.price_at_purchase)}</span>
                             <span>{formatDate(selectedSubscription.created_at)}</span>
+                            {selectedSubscription.ends_at && <span>انقضا: {formatDate(selectedSubscription.ends_at)}</span>}
                         </div>
                     </div>
                 </div>

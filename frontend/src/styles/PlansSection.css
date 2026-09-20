@@ -256,3 +256,21 @@
   border-color: var(--plan-accent);
   color: var(--text-white);
 }
+.plan-card__image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 180px;
+  overflow: hidden;
+}
+
+.plan-card__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 160px;
+  overflow-y: auto;
+}

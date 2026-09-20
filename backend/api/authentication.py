@@ -24,7 +24,7 @@ class BanAwareJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
         result = super().authenticate(request)
         if result is None:
-            return None  # no token on this request — nothing to check
+            return None
 
         user, validated_token = result
 
@@ -32,12 +32,17 @@ class BanAwareJWTAuthentication(JWTAuthentication):
             BANNED_ALLOWED_PATH_PREFIXES
         ):
             raise AuthenticationFailed(
-                {
-                    "detail": "حساب شما مسدود شده است",
-                    "banned": True,
-                    "ban_reason": user.ban_reason,
-                },
+                {"detail": "حساب شما مسدود شده است", "banned": True, "ban_reason": user.ban_reason},
                 code="user_banned",
+            )
+
+        counselor = getattr(user, "counselor_profile", None)
+        if counselor and counselor.is_purged and not request.path.startswith(
+            BANNED_ALLOWED_PATH_PREFIXES
+        ):
+            raise AuthenticationFailed(
+                {"detail": "پروفایل مشاوره شما حذف شده است. برای بازیابی با پشتیبانی تماس بگیرید", "purged": True},
+                code="counselor_purged",
             )
 
         return user, validated_token

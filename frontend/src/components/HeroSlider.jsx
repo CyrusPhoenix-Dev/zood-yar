@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "../styles/HeroSlider.css";
 import { Link } from "react-router";
 import api from "../api";
+
+const SWIPE_THRESHOLD = 50; // px — minimum horizontal drag to count as a swipe, not a tap
 
 /**
  * Fetches active hero slides from /api/hero-slides/ and renders them
@@ -15,6 +17,7 @@ function HeroSlider({ autoPlay = 5000 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef(null);
 
   useEffect(() => {
     api
@@ -53,6 +56,31 @@ function HeroSlider({ autoPlay = 5000 }) {
     return () => clearInterval(timer);
   }, [autoPlay, goNext, slides.length, isPaused]);
 
+  // ===== Touch / swipe support (mobile) =====
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    setIsPaused(true); // pause autoplay while the user is interacting
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    setIsPaused(false);
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+
+    // Track is forced LTR (see slider__track), so a physical
+    // right-swipe (positive deltaX) always goes to the previous
+    // slide, a left-swipe to the next — regardless of the page's
+    // RTL context, same reasoning as the nav arrows below.
+    if (deltaX > 0) {
+      goPrev();
+    } else {
+      goNext();
+    }
+  };
+
   if (isLoading || slides.length === 0) return null;
 
   return (
@@ -61,6 +89,8 @@ function HeroSlider({ autoPlay = 5000 }) {
         className="slider"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Track direction is forced LTR so translateX math stays predictable
             regardless of the page's RTL context — only the caption text

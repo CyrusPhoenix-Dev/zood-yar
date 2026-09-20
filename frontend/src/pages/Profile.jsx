@@ -36,7 +36,7 @@ function ProfilePage() {
       case "CounselorInfo":
         return <CounselorInfo />;
       case "subscriptions":
-        return <MySubscriptions />;
+        return <MySubscriptions />;      
       default:
         return <EditInfo />;
     }
