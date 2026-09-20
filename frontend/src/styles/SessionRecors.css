@@ -198,13 +198,22 @@
    isn't subject to the app's normal breakpoints.
 =========================== */
 @media print {
-  /* Navbar and Footer are rendered by Layout around every page, not
-     by this component — hiding them here works because your CSS is
-     global (no CSS modules), so a plain class selector reaches them
-     regardless of which file it's declared in. */
   .navbar,
-  .footer {
+  .footer,
+  .side-nav {
     display: none !important;
+  }
+
+  .profile-layout {
+    display: block !important;
+  }
+
+  .records-page {
+    display: block;
+    max-width: 100%;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0;
   }
 
   .records-page__no-print {
@@ -213,12 +222,6 @@
 
   .records-page__print-only {
     display: block !important;
-  }
-
-  .records-page {
-    display: block;
-    max-width: 100%;
-    padding: 0;
   }
 
   .records-content {
@@ -231,14 +234,34 @@
     padding: 0;
   }
 
-  .records-table {
+  .records-print-table {
     display: table !important;
+    width: 100%;
+    border-collapse: collapse;
   }
 
-  .records-table th,
-  .records-table td {
+  .records-print-table th {
+    text-align: start;
+    font-size: var(--text-xs);
     color: #000;
+    padding: var(--space-3);
     border-bottom: 1px solid #ccc;
+    white-space: nowrap;
+  }
+
+  .records-print-table td {
+    font-size: var(--text-sm);
+    color: #000;
+    padding: var(--space-3);
+    border-bottom: 1px solid #ccc;
+    white-space: nowrap;
+  }
+
+  .records-counselors,
+  .records-months,
+  .records-days,
+  .records-page__breadcrumb {
+    display: none !important;
   }
 }
 
@@ -266,4 +289,264 @@
 }
 .records-table__cancel-btn:hover{
   background-color: var(--secondary);
+}
+.records-table__row--clickable,
+.records-list__item--clickable {
+  cursor: pointer;
+}
+
+.records-table__row--clickable:hover {
+  background: var(--surface-hover);
+}
+
+.subscription-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+  overflow-y: scroll;
+}
+
+.subscription-detail-box {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  margin-top: 200px;
+
+}
+
+.subscription-detail-box__image {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--primary-light);
+}
+
+.subscription-detail-box__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.subscription-detail-box__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: start;
+}
+
+.subscription-detail-box__features li {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.subscription-detail-box__footer {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-light);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.records-counselors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.records-counselor-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.records-counselor-card:hover {
+  border-color: var(--primary);
+}
+
+.records-counselor-card__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.records-counselor-card__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.records-counselor-card__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.records-page__breadcrumb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.records-page__back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.records-page__back-btn:hover {
+  text-decoration: underline;
+}
+
+.records-page__breadcrumb-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.records-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.records-month-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: start;
+  transition: border-color var(--transition-fast);
+}
+
+.records-month-card:hover {
+  border-color: var(--primary);
+}
+
+.records-month-card__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.records-month-card__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.records-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.records-day__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.records-day__sessions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.records-day__session {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  background: var(--background);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.records-day__time {
+  font-weight: var(--font-semibold);
+}
+
+/* Print-only flat table — hidden on screen, only shown by window.print() */
+.records-print-table {
+  display: none;
+}
+
+@media print {
+  .records-print-table {
+    display: table !important;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .records-print-table th {
+    text-align: start;
+    font-size: var(--text-xs);
+    color: #000;
+    padding: var(--space-3);
+    border-bottom: 1px solid #ccc;
+  }
+
+  .records-print-table td {
+    font-size: var(--text-sm);
+    color: #000;
+    padding: var(--space-3);
+    border-bottom: 1px solid #ccc;
+  }
+
+  /* Everything else on the page (whichever drill-down level was
+     open on screen) is hidden for print — only the flat table and
+     the print-only title show up in the PDF. */
+  .records-counselors,
+  .records-months,
+  .records-days,
+  .records-page__breadcrumb {
+    display: none !important;
+  }
 }

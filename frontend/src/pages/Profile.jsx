@@ -10,6 +10,7 @@ import CounselorInfo from "../components/CounselorInfo";
 import PhoneAuth from './PhoneAuth' //don't forget
 import CounselorCalendarPage from "./CounselorCalendar";
 import CounselorClientsPage from "./CounselorClients";
+import MySubscriptions from "../components/MySubscriptions";
 
 function ProfilePage() {
   const [activeSection, setActiveSection] = useState("editInfo");
@@ -34,6 +35,8 @@ function ProfilePage() {
         return <CounselorClientsPage />;
       case "CounselorInfo":
         return <CounselorInfo />;
+      case "subscriptions":
+        return <MySubscriptions />;
       default:
         return <EditInfo />;
     }

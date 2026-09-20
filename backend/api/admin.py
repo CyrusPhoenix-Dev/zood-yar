@@ -13,8 +13,13 @@ from .models import (
     CounselorGalleryImage,
     AvailabilitySlot,
     Specialty,
-    PaymentTransaction,
     Booking,
+    HeroSlide,
+    Plan,
+    UserSubscription,
+    PaymentTransaction,
+    Coupon,
+    PlanSale,
 )
 
 
@@ -56,7 +61,12 @@ class CustomUserAdmin(UserAdmin):
         "date_joined",
     )
 
-    list_filter = ("role", "is_active", "is_staff", "is_phone_verified",)
+    list_filter = (
+        "role",
+        "is_active",
+        "is_staff",
+        "is_phone_verified",
+    )
 
     search_fields = (
         "username",
@@ -70,7 +80,16 @@ class CustomUserAdmin(UserAdmin):
         (None, {"fields": ("username", "password")}),
         (
             "اطلاعات شخصی",
-            {"fields": ("first_name", "last_name", "phone", "national_id", "birth_date", "gender")},
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                    "phone",
+                    "national_id",
+                    "birth_date",
+                    "gender",
+                )
+            },
         ),
         (
             "وضعیت تایید",
@@ -170,6 +189,7 @@ class SpecialtyAdmin(admin.ModelAdmin):
 class CounselorCertificateInline(admin.TabularInline):
     """Certificate uploads shown directly on the Counselor edit page,
     rather than needing to jump to a separate admin section."""
+
     model = CounselorCertificate
     extra = 1
 
@@ -179,6 +199,7 @@ class CounselorGalleryImageInline(admin.TabularInline):
     admin can remove an inappropriate upload without needing a
     separate moderation view. The 6-photo cap is enforced in the
     counselor-facing API view, not here — admin isn't bound by it."""
+
     model = CounselorGalleryImage
     extra = 0
 
@@ -217,7 +238,11 @@ class CounselorAdmin(admin.ModelAdmin):
     # Avoids rendering a dropdown of every single user in the system —
     # requires User.search_fields above to be set for this to work.
     autocomplete_fields = ("user",)
-    inlines = [CounselorCertificateInline, CounselorGalleryImageInline, AvailabilitySlotInline]
+    inlines = [
+        CounselorCertificateInline,
+        CounselorGalleryImageInline,
+        AvailabilitySlotInline,
+    ]
 
     actions = ["mark_verified"]
 
@@ -240,6 +265,7 @@ class AvailabilitySlotAdmin(admin.ModelAdmin):
     search_fields = ("counselor__user__username",)
     date_hierarchy = "date"
 
+
 class TicketReplyInline(admin.TabularInline):
     model = TicketReply
     extra = 1
@@ -253,12 +279,14 @@ class TicketReplyInline(admin.TabularInline):
     exclude = ("sender",)
     readonly_fields = ("created_at",)
 
+
 STATUS_COLORS = {
     SupportTicket.Status.PENDING: "#f59e0b",
     SupportTicket.Status.IN_PROGRESS: "#3b82f6",
     SupportTicket.Status.RESOLVED: "#22c55e",
     SupportTicket.Status.CLOSED: "#9ca3af",
 }
+
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(admin.ModelAdmin):
@@ -284,6 +312,7 @@ class SupportTicketAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display(),
         )
+
     status_badge.short_description = "وضعیت"
 
     def save_formset(self, request, form, formset, change):
@@ -308,11 +337,15 @@ class SupportTicketAdmin(admin.ModelAdmin):
         updated = queryset.update(status=SupportTicket.Status.RESOLVED)
         self.message_user(request, f"{updated} تیکت به‌روزرسانی شد")
 
+
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ("id", "booking", "rating", "is_approved", "created_at")
     list_filter = ("is_approved", "rating")
-    search_fields = ("booking__client__username", "booking__slot__counselor__user__username")
+    search_fields = (
+        "booking__client__username",
+        "booking__slot__counselor__user__username",
+    )
     actions = ["approve_reviews", "reject_reviews"]
 
     @admin.action(description="تایید نظرات انتخاب‌شده")
@@ -325,16 +358,26 @@ class ReviewAdmin(admin.ModelAdmin):
         updated = queryset.update(is_approved=False)
         self.message_user(request, f"{updated} نظر رد/پنهان شد")
 
+
 @admin.register(PaymentTransaction)
 class PaymentTransactionAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "client_name", "amount", "status",
-        "authority", "reference_id", "booking", "created_at",
+        "id",
+        "client_name",
+        "amount",
+        "status",
+        "authority",
+        "reference_id",
+        "booking",
+        "created_at",
     )
     list_filter = ("status", "created_at")
     search_fields = (
-        "client__username", "client__first_name", "client__last_name",
-        "authority", "reference_id",
+        "client__username",
+        "client__first_name",
+        "client__last_name",
+        "authority",
+        "reference_id",
     )
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
@@ -348,11 +391,13 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
 
     def client_name(self, obj):
         return obj.client.get_full_name() or obj.client.username
+
     client_name.short_description = "کاربر"
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("client", "booking")
-    
+
+
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
     """Read-only financial ledger — money records shouldn't be
@@ -399,21 +444,100 @@ class BookingAdmin(admin.ModelAdmin):
         return False
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            "client", "slot__counselor__user"
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("client", "slot__counselor__user")
         )
 
     def client_name(self, obj):
         return obj.client.get_full_name() or obj.client.username
+
     client_name.short_description = "کاربر"
 
     def counselor_name(self, obj):
         counselor = obj.slot.counselor
         return counselor.user.get_full_name() or counselor.user.username
+
     counselor_name.short_description = "مشاور"
 
     def session_datetime(self, obj):
         return f"{obj.slot.date} {obj.slot.start_time.strftime('%H:%M')}"
-    session_datetime.short_description = "زمان جلسه"
-    
 
+    session_datetime.short_description = "زمان جلسه"
+
+
+@admin.register(HeroSlide)
+class HeroSlideAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "order", "is_active", "created_at")
+    list_editable = (
+        "order",
+        "is_active",
+    )  # reorder/toggle right from the list, no need to open each row
+    ordering = ("order",)
+
+class PlanSaleInline(admin.TabularInline):
+    model = PlanSale
+    extra = 0
+    
+@admin.register(Plan)
+class PlanAdmin(admin.ModelAdmin):
+    list_display = ("title", "price", "price_six_months", "price_yearly", "order", "is_active", "created_at")
+    list_editable = ("order", "is_active")
+    ordering = ("order",)
+    inlines = [PlanSaleInline]
+
+
+@admin.register(UserSubscription)
+class UserSubscriptionAdmin(admin.ModelAdmin):
+    """Read-only — same principle as BookingAdmin: subscription status
+    should only change through the real purchase/verify flow, never a
+    hand-edited field, or it'll desync from what Zarinpal actually
+    confirmed."""
+
+    list_display = (
+        "user",
+        "plan",
+        "price_at_purchase",
+        "status",
+        "started_at",
+        "created_at",
+    )
+    list_filter = ("status", "plan")
+    search_fields = ("user__username", "user__first_name", "user__last_name")
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+    readonly_fields = (
+        "user",
+        "plan",
+        "price_at_purchase",
+        "status",
+        "started_at",
+        "created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+
+
+
+# add `inlines = [PlanSaleInline]` to your existing PlanAdmin
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "percent_off",
+        "is_active",
+        "times_used",
+        "max_uses",
+        "expires_at",
+    )
+    list_editable = ("is_active",)
+    search_fields = ("code",)

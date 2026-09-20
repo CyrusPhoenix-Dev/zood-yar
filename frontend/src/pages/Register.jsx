@@ -17,40 +17,43 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const validate = () => {
+    const errors = [];
+
     if (!username.trim()) {
-      return "نام کاربری الزامی است";
+      errors.push("نام کاربری الزامی است");
     }
     if (!firstName.trim() || !lastName.trim()) {
-      return "لطفا نام و نام خانوادگی را وارد کنید";
+      errors.push("لطفا نام و نام خانوادگی را وارد کنید");
     }
-    // Phone is required now — the whole point of the post-registration
-    // verification step is confirming a real number, so registering
-    // with a blank one would leave nothing to actually verify.
     if (!PHONE_REGEX.test(phone.trim())) {
-      return "شماره تلفن معتبر نیست (مثال: 09121234567)";
+      errors.push("شماره تلفن معتبر نیست (مثال: 09121234567)");
     }
     if (password.length < 8) {
-      return "رمز عبور باید حداقل ۸ کاراکتر باشد";
+      errors.push("رمز عبور باید حداقل ۸ کاراکتر باشد");
     }
     if (password !== confirmPassword) {
-      return "رمز عبور و تکرار آن یکسان نیستند";
+      errors.push("رمز عبور و تکرار آن یکسان نیستند");
     }
-    return "";
-  };
+    if (!acceptedTerms) {
+      errors.push("برای ثبت‌نام باید قوانین و مقررات را بپذیرید");
+    }
 
+    return errors;
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    const validationErrors = validate();
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
       return;
     }
-    setError("");
+    setErrors([]);
     setLoading(true);
     try {
       const res = await api.post("/api/user/register/", {
@@ -63,14 +66,10 @@ function RegisterForm() {
       localStorage.setItem(ACCESS_TOKEN, res.data.access);
       localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
       window.dispatchEvent(new Event("authchange"));
-      // Registration logs the user in immediately (tokens are already
-      // stored above) — so there's no reason to send them to /login.
-      // They go straight to the phone-verification gate instead;
-      // ProtectedRoute won't let them past it until it's done.
       navigate("/verify-phone");
     } catch (err) {
       console.error(err.response?.data || err);
-      setError(translateApiError(err));
+      setErrors([translateApiError(err)]);
     } finally {
       setLoading(false);
     }
@@ -180,9 +179,34 @@ function RegisterForm() {
           />
         </div>
       </div>
+      <div className="register-form__field">
+        <label className="register-form__checkbox-label">
+          <input
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+          />
+          <span>
+            <a href="/terms" target="_blank" rel="noopener noreferrer">
+              قوانین و مقررات
+            </a>{" "}
+            و{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer">
+              حریم خصوصی
+            </a>{" "}
+            را مطالعه کرده و می‌پذیرم
+          </span>
+        </label>
+      </div>
 
-      {error && <p className="register-form__error">{error}</p>}
-
+      {errors.length > 0 && (
+        <ul className="register-form__error-list">
+          {errors.map((msg, i) => (
+            <li key={i} className="register-form__error">{msg}</li>
+          ))}
+        </ul>
+      )}
+      
       <button type="submit" className="register-form__button" disabled={loading}>
         {loading ? "در حال ثبت‌نام..." : "ثبت‌نام"}
       </button>

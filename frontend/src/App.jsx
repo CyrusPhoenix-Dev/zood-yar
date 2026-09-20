@@ -20,6 +20,7 @@ import BannedPage from './pages/BannedPage'
 import TermsPage from './pages/Terms'
 import PrivacyPage from './pages/Privacy'
 import VerifyPhonePage from './pages/VerifyPhone'
+import PlansPage from './pages/PlansPage';
 function Logout() {
   useEffect(() => {
     localStorage.clear();
@@ -53,6 +54,7 @@ function App() {
             <Route path="/logout" element={<Logout />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/plans" element={<PlansPage />}/>
             <Route
               path="/verify-phone"
               element={

@@ -40,8 +40,6 @@ from .views import (
     ReviewableBookingView,
     MyBookingsView,
     CounselorPublicSlotsView,
-    MockPaymentView,
-    BookSlotView,
     SpecialtyListView,
     CounselorScheduleView,
     SchedulePreviewView,
@@ -49,6 +47,15 @@ from .views import (
     CancelBookingView,
     CounselorEarningsView,
     AvailabilitySlotBulkDeleteByDateView,
+    AvailabilitySlotBulkDeleteByRangeView,
+    HeroSlideListView,
+    SubscriptionPurchaseInitView,
+    SubscriptionVerifyView,
+    PlanListView,
+    MySubscriptionsView,
+    BookingPurchaseInitView,
+    BookingVerifyView,
+    ApplyCouponView,
 )
 from .support_views import (
     MyTicketListCreateView,
@@ -115,6 +122,12 @@ urlpatterns = [
         name="counselor_slots",
     ),
     path(
+        "slots/<int:pk>/purchase/",
+        BookingPurchaseInitView.as_view(),
+        name="booking_purchase",
+    ),
+    path("bookings/verify/", BookingVerifyView.as_view(), name="booking_verify"),
+    path(
         "counselor/slots/<int:pk>/",
         AvailabilitySlotDeleteView.as_view(),
         name="counselor_slot_delete",
@@ -178,9 +191,6 @@ urlpatterns = [
         name="counselor_public_slots",
     ),
     # ===== Booking flow =====
-    # PLACEHOLDER — replace with real Zarinpal integration later.
-    path("payments/mock/", MockPaymentView.as_view(), name="mock_payment"),
-    path("slots/<int:pk>/book/", BookSlotView.as_view(), name="book_slot"),
     # ===== Public: specialty categories (drives the filter checkboxes) =====
     path("specialties/", SpecialtyListView.as_view(), name="specialty_list"),
     # ===== Support tickets (any logged-in role) =====
@@ -224,4 +234,23 @@ urlpatterns = [
         AvailabilitySlotBulkDeleteByDateView.as_view(),
         name="counselor_slots_day_delete",
     ),
+    path(
+        "counselor/slots/range/",
+        AvailabilitySlotBulkDeleteByRangeView.as_view(),
+        name="counselor_slots_range_delete",
+    ),
+    path("hero-slides/", HeroSlideListView.as_view(), name="hero_slides"),
+    path(
+        "plans/<int:plan_id>/purchase/",
+        SubscriptionPurchaseInitView.as_view(),
+        name="subscription_purchase",
+    ),
+    path(
+        "subscriptions/verify/",
+        SubscriptionVerifyView.as_view(),
+        name="subscription_verify",
+    ),
+    path("plans/", PlanListView.as_view(), name="plan_list"),
+    path("user/subscriptions/", MySubscriptionsView.as_view(), name="my_subscriptions"),
+    path("coupons/apply/", ApplyCouponView.as_view(), name="apply_coupon"),
 ]

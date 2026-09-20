@@ -24,7 +24,8 @@
   overflow: hidden;
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-md);
-  background: var(--surface-hover); /* shows briefly while images load */
+  background: var(--surface-hover);
+  /* shows briefly while images load */
 }
 
 /* ===========================
@@ -120,7 +121,8 @@
 }
 
 .slider__nav--prev {
-  inset-inline-start: var(--space-3); /* respects RTL/LTR automatically */
+  inset-inline-start: var(--space-3);
+  /* respects RTL/LTR automatically */
 }
 
 .slider__nav--next {
@@ -181,11 +183,24 @@
 @media (max-width: 480px) {
   .slider {
     aspect-ratio: 1 / 1;
-    border-radius: var(--radius-lg); /* slightly smaller radius reads better on narrow cards */
+    border-radius: var(--radius-lg);
+    /* slightly smaller radius reads better on narrow cards */
   }
 
   .slider__nav {
     width: 30px;
     height: 30px;
   }
+}
+
+.slider__slide-wrapper {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+}
+
+.slider__slide-link {
+  display: block;
+  width: 100%;
+  height: 100%;
 }

@@ -1,37 +1,40 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "../styles/HeroSlider.css";
-import { Link, useNavigate } from "react-router";
-
+import { Link } from "react-router";
+import api from "../api";
 
 /**
- * slides: [{ image: "url", caption: "text shown at bottom center" }]
- * autoPlay: ms interval, 0 or omitted disables autoplay
+ * Fetches active hero slides from /api/hero-slides/ and renders them
+ * as a slider. Managed entirely from Django admin — no props needed
+ * for normal use; autoPlay is still overridable if some page wants a
+ * different interval.
  */
-const defaultSlides = [
-  {
-    image: "slider_1.jpg",
-    caption: "",
-  },
-  {
-    image: "slider_2.jpg",
-    caption: "",
-  },
-  {
-    image: "slider_3.jpg",
-    caption: "",
-  },
-  {
-    image: "slider_4.jpg",
-    caption: "",
-  },
-
-];
-
-function Slider({ slides = defaultSlides, autoPlay = 5000 }) {
+function HeroSlider({ autoPlay = 5000 }) {
+  const [slides, setSlides] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    api
+      .get("/api/hero-slides/")
+      .then((res) => {
+        setSlides(
+          res.data.map((s) => ({
+            image: s.image,
+            caption: s.title || s.subtitle || "",
+            link_url: s.link_url || null,
+          }))
+        );
+      })
+      .catch((err) => {
+        // Fail quiet — a missing slider shouldn't break the homepage,
+        // just render nothing where it would have been.
+        console.error(err);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const goTo = useCallback(
     (index) => {
@@ -50,7 +53,7 @@ function Slider({ slides = defaultSlides, autoPlay = 5000 }) {
     return () => clearInterval(timer);
   }, [autoPlay, goNext, slides.length, isPaused]);
 
-  if (slides.length === 0) return null;
+  if (isLoading || slides.length === 0) return null;
 
   return (
     <div className="slider-container">
@@ -66,20 +69,33 @@ function Slider({ slides = defaultSlides, autoPlay = 5000 }) {
           className="slider__track"
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
-          {slides.map((slide, index) => (
-            <div
-              key={index}
-              className="slider__slide"
-              style={{ backgroundImage: `url(${slide.image})` }}
-              aria-hidden={index !== current}
-            >
-              {slide.caption && (
-                <div className="slider__caption">
-                  <p className="slider__caption-text">{slide.caption}</p>
-                </div>
-              )}
-            </div>
-          ))}
+          {slides.map((slide, index) => {
+            const slideContent = (
+              <div
+                className="slider__slide"
+                style={{ backgroundImage: `url(${slide.image})` }}
+                aria-hidden={index !== current}
+              >
+                {slide.caption && (
+                  <div className="slider__caption">
+                    <p className="slider__caption-text">{slide.caption}</p>
+                  </div>
+                )}
+              </div>
+            );
+
+            return (
+              <div key={index} className="slider__slide-wrapper">
+                {slide.link_url ? (
+                  <Link to={slide.link_url} className="slider__slide-link">
+                    {slideContent}
+                  </Link>
+                ) : (
+                  slideContent
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {slides.length > 1 && (
@@ -119,4 +135,4 @@ function Slider({ slides = defaultSlides, autoPlay = 5000 }) {
   );
 }
 
-export default Slider;
+export default HeroSlider;

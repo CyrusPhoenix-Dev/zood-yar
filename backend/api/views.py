@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -16,8 +16,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-
+from django.shortcuts import redirect
+from django.urls import reverse
+from .zarinpal import request_payment, verify_payment
 from .token_serializers import CustomTokenObtainPairSerializer
+from django.conf import settings
 
 from .models import (
     OtpCode,
@@ -29,13 +32,32 @@ from .models import (
     CounselorNote,
     Review,
     Specialty,
+    HeroSlide,
+    UserSubscription,
+    Plan,
+    CounselorSchedule,
+    ScheduleWorkingDay,
+    ScheduleBreak,
+    REFUND_CUTOFF_DAYS,
+    BOOKING_PAYMENT_TIMEOUT_MINUTES,
+    PaymentTransaction,
+    Coupon,
+    BillingPeriod,
+    BILLING_PERIOD_DAYS,
 )
 from .sms import (
     send_otp_sms,
     send_booking_reminder_sms,
     send_counselor_booking_notice_sms,
 )
-from .serializers import UserSerializer, UserProfileSerializer, serializers
+from .serializers import (
+    UserSerializer,
+    UserProfileSerializer,
+    serializers,
+    HeroSlideSerializer,
+    PlanSerializer,
+    UserSubscriptionSerializer,
+)
 from .counselor_serializers import (
     AvailabilitySlotSerializer,
     BookingClientSerializer,
@@ -48,12 +70,6 @@ from .counselor_serializers import (
     CounselorReviewSerializer,
     PublicCounselorSerializer,
     SpecialtySerializer,
-)
-from .models import (
-    CounselorSchedule,
-    ScheduleWorkingDay,
-    ScheduleBreak,
-    REFUND_CUTOFF_DAYS,
 )
 from .counselor_serializers import (
     CounselorScheduleSerializer,
@@ -325,98 +341,165 @@ class CounselorPublicSlotsView(generics.ListAPIView):
         ).order_by("date", "start_time")
 
 
-class MockPaymentView(APIView):
-    """PLACEHOLDER — simulates a payment gateway with no real money
-    involved, since Zarinpal isn't wired up yet. Always succeeds.
-    Replace this entire view with a real Zarinpal request/callback
-    flow later; the booking view below only cares that it receives
-    *a* reference string back, so swapping this out shouldn't require
-    changing BookSlotView at all."""
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        reference = f"MOCK-{uuid.uuid4().hex[:12]}"
-        return Response(
-            {"success": True, "reference": reference}, status=status.HTTP_200_OK
-        )
-
-
-class BookSlotView(APIView):
-    """Authenticated. Creates the actual Booking. Locks the slot row
-    (select_for_update) and re-checks is_booked inside the transaction
-    — without this, two clients hitting "book" on the same slot at
-    almost the same moment could both succeed, double-booking it."""
+class BookingPurchaseInitView(APIView):
+    """Authenticated. Starts a real Zarinpal payment for one slot.
+    Doesn't create the Booking yet — that only happens once payment
+    verifies (see BookingVerifyView). Guards against double-booking
+    during the payment window by checking for another PENDING
+    transaction on the same slot within the last
+    BOOKING_PAYMENT_TIMEOUT_MINUTES, not by flipping is_booked early —
+    flipping it early would incorrectly block the slot forever if the
+    client abandons checkout without ever returning."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        payment_reference = request.data.get("payment_reference", "").strip()
-        if not payment_reference:
+        slot = get_object_or_404(AvailabilitySlot, pk=pk)
+
+        if slot.is_booked:
             return Response(
-                {"detail": "تایید پرداخت یافت نشد"}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": "این زمان قبلا رزرو شده است"},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        session_start = timezone.make_aware(
+            datetime.combine(slot.date, slot.start_time)
+        )
+        if session_start <= timezone.now():
+            return Response(
+                {"detail": "امکان رزرو زمان‌های گذشته وجود ندارد"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        recent_cutoff = timezone.now() - timedelta(
+            minutes=BOOKING_PAYMENT_TIMEOUT_MINUTES
+        )
+        in_progress = PaymentTransaction.objects.filter(
+            slot=slot,
+            purpose=PaymentTransaction.Purpose.BOOKING,
+            status=PaymentTransaction.Status.PENDING,
+            created_at__gte=recent_cutoff,
+        ).exists()
+        if in_progress:
+            return Response(
+                {
+                    "detail": "این زمان در حال حاضر توسط شخص دیگری در حال رزرو است. کمی بعد دوباره تلاش کنید"
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        callback_url = request.build_absolute_uri(reverse("booking_verify"))
+        result = request_payment(
+            amount_rial=slot.counselor.session_price * 10,
+            description=f"رزرو نوبت با {slot.counselor.user.get_full_name() or slot.counselor.user.username}",
+            callback_url=callback_url,
+            mobile=request.user.phone or None,
+        )
+
+        if not result["success"]:
+            return Response({"detail": "خطا در اتصال به درگاه پرداخت"}, status=502)
+
+        PaymentTransaction.objects.create(
+            client=request.user,
+            slot=slot,
+            amount=slot.counselor.session_price,
+            authority=result["authority"],
+            purpose=PaymentTransaction.Purpose.BOOKING,
+        )
+
+        return Response({"pay_url": result["pay_url"]})
+
+
+class BookingVerifyView(APIView):
+    """Public — Zarinpal redirects here directly, no auth header.
+    Verifies, THEN creates the Booking — this is the one place a
+    booking actually gets created for a real (non-mock) payment.
+    Re-checks is_booked inside the same lock pattern BookSlotView used
+    to use, since two payments could theoretically verify for the same
+    slot in a tight race even with the pending-transaction guard above."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        authority = request.query_params.get("Authority")
+        ok = request.query_params.get("Status") == "OK"
+
+        payment_transaction = get_object_or_404(
+            PaymentTransaction,
+            authority=authority,
+            purpose=PaymentTransaction.Purpose.BOOKING,
+        )
+
+        if payment_transaction.status != PaymentTransaction.Status.PENDING:
+            # Zarinpal can hit the callback more than once — don't
+            # double-create a Booking on a repeat call.
+            return redirect(
+                f"{settings.FRONTEND_URL}/profile?payment=already_processed"
+            )
+
+        result = (
+            verify_payment(
+                amount_rial=payment_transaction.amount * 10, authority=authority
+            )
+            if ok
+            else {"success": False}
+        )
+
+        if not result["success"]:
+            payment_transaction.status = PaymentTransaction.Status.FAILED
+            payment_transaction.save(update_fields=["status"])
+            return redirect(
+                f"{settings.FRONTEND_URL}/CounselorProfile/{payment_transaction.slot.counselor.slug}?payment=failed"
             )
 
         with transaction.atomic():
-            try:
-                slot = AvailabilitySlot.objects.select_for_update().get(pk=pk)
-            except AvailabilitySlot.DoesNotExist:
-                return Response(
-                    {"detail": "زمان مورد نظر یافت نشد"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            slot = AvailabilitySlot.objects.select_for_update().get(
+                pk=payment_transaction.slot_id
+            )
 
             if slot.is_booked:
-                return Response(
-                    {"detail": "این زمان لحظاتی پیش توسط شخص دیگری رزرو شد"},
-                    status=status.HTTP_409_CONFLICT,
-                )
-
-            session_start = timezone.make_aware(
-                datetime.combine(slot.date, slot.start_time)
-            )
-            if session_start <= timezone.now():
-                return Response(
-                    {"detail": "امکان رزرو زمان‌های گذشته وجود ندارد"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                # Extremely unlikely given the guards above, but if it
+                # happens, the payment succeeded and money moved — do
+                # NOT silently drop it. Mark failed-but-paid so an
+                # admin can see and manually refund via Zarinpal.
+                payment_transaction.status = PaymentTransaction.Status.FAILED
+                payment_transaction.gateway_response = {
+                    "note": "slot became booked during verify race"
+                }
+                payment_transaction.save(update_fields=["status", "gateway_response"])
+                return redirect(f"{settings.FRONTEND_URL}/profile?payment=conflict")
 
             booking = Booking.objects.create(
                 slot=slot,
-                client=request.user,
-                payment_reference=payment_reference,
-                price_at_booking=slot.counselor.session_price,
+                client=payment_transaction.client,
+                payment_reference=result["ref_id"],
+                price_at_booking=payment_transaction.amount,
             )
 
-        # Outside the atomic block, so an SMS failure never rolls back
-        # a successful booking. Each side (client, counselor) only
-        # gets texted if THEIR OWN phone is verified — an
-        # unverified/blank number isn't confirmed to actually belong
-        # to that person, so it isn't a safe or meaningful destination
-        # for a booking notification.
+        payment_transaction.status = PaymentTransaction.Status.SUCCESS
+        payment_transaction.reference_id = result["ref_id"]
+        payment_transaction.booking = booking
+        payment_transaction.save(update_fields=["status", "reference_id", "booking"])
+
         session_datetime = (
             f"{slot.date.strftime('%Y/%m/%d')} {slot.start_time.strftime('%H:%M')}"
         )
-
-        if request.user.phone and request.user.is_phone_verified:
+        client = payment_transaction.client
+        if client.phone and client.is_phone_verified:
             send_booking_reminder_sms(
-                request.user.phone,
+                client.phone,
                 session_datetime,
                 slot.counselor.user.get_full_name() or slot.counselor.user.username,
             )
-
         counselor_user = slot.counselor.user
         if counselor_user.phone and counselor_user.is_phone_verified:
             send_counselor_booking_notice_sms(
                 counselor_user.phone,
-                request.user.get_full_name() or request.user.username,
+                client.get_full_name() or client.username,
                 session_datetime,
             )
 
-        return Response(
-            {"detail": "رزرو با موفقیت انجام شد", "booking_id": booking.id},
-            status=status.HTTP_201_CREATED,
-        )
+        return redirect(f"{settings.FRONTEND_URL}/profile?payment=success")
 
 
 class IsCounselor(permissions.BasePermission):
@@ -695,6 +778,7 @@ class MyBookingsView(APIView):
             results.append(
                 {
                     "id": booking.id,
+                    "counselor_id": counselor.id,
                     "doctor": counselor.user.get_full_name() or counselor.user.username,
                     "avatar": (
                         request.build_absolute_uri(counselor.user.avatar.url)
@@ -703,6 +787,7 @@ class MyBookingsView(APIView):
                     ),
                     "date": booking.slot.date,
                     "time": booking.slot.start_time,
+                    "end_time": booking.slot.end_time,
                     "price": counselor.session_price,
                     "session_number": session_numbers[booking.id],
                     "status": booking.status,
@@ -953,51 +1038,15 @@ class ScheduleGenerateView(APIView):
         return Response({"created": len(to_create)}, status=status.HTTP_201_CREATED)
 
 
-class ScheduleGenerateView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsCounselor]
-
-    def post(self, request):
-        serializer = SchedulePreviewRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        counselor = request.user.counselor_profile
-        schedule = get_object_or_404(CounselorSchedule, counselor=counselor)
-        candidates = generate_slots(
-            schedule,
-            serializer.validated_data["start_date"],
-            serializer.validated_data["end_date"],
-        )
-
-        existing = set(
-            AvailabilitySlot.objects.filter(counselor=counselor).values_list(
-                "date", "start_time"
-            )
-        )
-        to_create = [
-            AvailabilitySlot(
-                counselor=counselor,
-                date=c["date"],
-                start_time=c["start_time"],
-                end_time=c["end_time"],
-                source=AvailabilitySlot.Source.GENERATED,
-            )
-            for c in candidates
-            if (c["date"], c["start_time"]) not in existing
-        ]
-
-        # ignore_conflicts as a second safety net against the unique
-        # constraint — the existing-set check above should already
-        # prevent collisions, this just covers any race.
-        AvailabilitySlot.objects.bulk_create(to_create, ignore_conflicts=True)
-
-        return Response({"created": len(to_create)}, status=status.HTTP_201_CREATED)
-
-
 class CancelBookingView(APIView):
     """Either the client or the counselor on a booking can cancel.
     Refund eligibility: ≥3 days before session start = refunded;
     inside that window = no refund. Counselor-initiated cancels
-    always refund — not the client's fault if the counselor cancels."""
+    always refund — not the client's fault if the counselor cancels.
+    A session that has already started can no longer be cancelled by
+    either side — at that point it either happened or didn't, and
+    "cancelling" it after the fact would incorrectly reopen the slot
+    and undo earnings for a session that was already delivered."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1024,6 +1073,13 @@ class CancelBookingView(APIView):
             session_start = timezone.make_aware(
                 datetime.combine(booking.slot.date, booking.slot.start_time)
             )
+
+            if session_start <= timezone.now():
+                return Response(
+                    {"detail": "این نوبت قبلا برگزار شده و قابل لغو نیست"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             days_notice = (session_start - timezone.now()).days
             refunded = is_counselor or days_notice >= REFUND_CUTOFF_DAYS
 
@@ -1083,3 +1139,209 @@ class AvailabilitySlotBulkDeleteByDateView(APIView):
             {"deleted": deleted_count, "booked_remaining": booked_count},
             status=status.HTTP_200_OK,
         )
+
+
+class AvailabilitySlotBulkDeleteByRangeView(APIView):
+    """Deletes every UNBOOKED slot the counselor has within
+    [start_date, end_date] inclusive — booked slots are never
+    touched. Used for "delete this month" from the calendar."""
+
+    permission_classes = [permissions.IsAuthenticated, IsCounselor]
+
+    def delete(self, request):
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+        if not start_date or not end_date:
+            return Response(
+                {"detail": "start_date و end_date الزامی است"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        counselor = request.user.counselor_profile
+        range_slots = AvailabilitySlot.objects.filter(
+            counselor=counselor, date__gte=start_date, date__lte=end_date
+        )
+
+        booked_count = range_slots.filter(is_booked=True).count()
+        deletable = range_slots.filter(is_booked=False)
+        deleted_count = deletable.count()
+        deletable.delete()
+
+        return Response(
+            {"deleted": deleted_count, "booked_remaining": booked_count},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PlanListView(generics.ListAPIView):
+    """Public — active subscription plans for the پلن‌ها section."""
+
+    serializer_class = PlanSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Plan.objects.filter(is_active=True).prefetch_related("sales")
+
+
+class HeroSlideListView(generics.ListAPIView):
+    serializer_class = HeroSlideSerializer
+    permission_classes = [permissions.AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        return HeroSlide.objects.filter(is_active=True)
+
+
+class SubscriptionPurchaseInitView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, plan_id):
+        plan = get_object_or_404(Plan, pk=plan_id, is_active=True)
+
+        period = request.data.get("billing_period", BillingPeriod.MONTHLY)
+        if period not in BillingPeriod.values:
+            return Response({"detail": "بازه پرداخت نامعتبر است"}, status=400)
+
+        base_price = plan.price_for_period(period)
+        if base_price is None:
+            return Response({"detail": "این پلن برای این بازه در دسترس نیست"}, status=400)
+
+        active_sale = next((s for s in plan.sales.all() if s.is_currently_active()), None)
+        price_after_sale = active_sale.discounted_price(base_price) if active_sale else base_price
+
+        coupon = None
+        coupon_code = request.data.get("coupon_code", "").strip().upper()
+        final_price = price_after_sale
+
+        if coupon_code:
+            try:
+                coupon = Coupon.objects.get(code__iexact=coupon_code)
+            except Coupon.DoesNotExist:
+                return Response({"detail": "کد تخفیف نامعتبر است"}, status=400)
+            if not coupon.is_valid():
+                return Response({"detail": "این کد تخفیف منقضی یا غیرفعال شده است"}, status=400)
+            final_price = max(0, price_after_sale - (price_after_sale * coupon.percent_off // 100))
+
+        subscription = UserSubscription.objects.create(
+            user=request.user, plan=plan, billing_period=period,
+            price_at_purchase=final_price, coupon=coupon,
+        )
+
+        if final_price <= 0:
+            self._activate(subscription)
+            if coupon:
+                coupon.times_used = F("times_used") + 1
+                coupon.save(update_fields=["times_used"])
+            return Response({"pay_url": None, "free": True})
+
+        callback_url = request.build_absolute_uri(reverse("subscription_verify"))
+        result = request_payment(
+            amount_rial=final_price * 10,
+            description=f"خرید اشتراک {plan.title} ({dict(BillingPeriod.choices)[period]})",
+            callback_url=callback_url,
+            mobile=request.user.phone or None,
+        )
+
+        if not result["success"]:
+            subscription.status = UserSubscription.Status.CANCELLED
+            subscription.save(update_fields=["status"])
+            return Response({"detail": "خطا در اتصال به درگاه پرداخت"}, status=502)
+
+        PaymentTransaction.objects.create(
+            client=request.user, amount=final_price, authority=result["authority"],
+            purpose=PaymentTransaction.Purpose.SUBSCRIPTION, subscription=subscription,
+        )
+
+        return Response({"pay_url": result["pay_url"]})
+
+    def _activate(self, subscription):
+        now = timezone.now()
+        subscription.status = UserSubscription.Status.ACTIVE
+        subscription.started_at = now
+        subscription.ends_at = now + timedelta(days=BILLING_PERIOD_DAYS[subscription.billing_period])
+        subscription.save(update_fields=["status", "started_at", "ends_at"])
+
+class SubscriptionVerifyView(APIView):
+    """Public — Zarinpal redirects the user's browser here directly
+    after payment, no auth header present. Verifies, activates the
+    subscription, then redirects into the React app with a query
+    param the frontend reads to show success/failure."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        authority = request.query_params.get("Authority")
+        ok = request.query_params.get("Status") == "OK"
+
+        transaction = get_object_or_404(
+            PaymentTransaction,
+            authority=authority,
+            purpose=PaymentTransaction.Purpose.SUBSCRIPTION,
+        )
+
+        if ok:
+            result = verify_payment(
+                amount_rial=transaction.amount * 10, authority=authority
+            )
+        else:
+            result = {"success": False}
+
+        if result["success"]:
+            transaction.status = PaymentTransaction.Status.SUCCESS
+            transaction.reference_id = result["ref_id"]
+            transaction.save(update_fields=["status", "reference_id"])
+
+            sub = transaction.subscription
+            now = timezone.now()
+            sub.status = UserSubscription.Status.ACTIVE
+            sub.started_at = now
+            sub.ends_at = now + timedelta(days=BILLING_PERIOD_DAYS[sub.billing_period])
+            sub.save(update_fields=["status", "started_at", "ends_at"])
+
+            if sub.coupon:
+                sub.coupon.times_used = F("times_used") + 1
+                sub.coupon.save(update_fields=["times_used"])
+
+            return redirect(f"{settings.FRONTEND_URL}/plans?payment=success")
+        
+        transaction.status = PaymentTransaction.Status.FAILED
+        transaction.save(update_fields=["status"])
+        if transaction.subscription:
+            transaction.subscription.status = UserSubscription.Status.CANCELLED
+            transaction.subscription.save(update_fields=["status"])
+
+        return redirect(f"{settings.FRONTEND_URL}/plans?payment=failed")
+
+
+class MySubscriptionsView(generics.ListAPIView):
+    """Authenticated. The client's own purchase history — every
+    subscription attempt, including pending/cancelled ones, not just
+    active ones, so a failed payment isn't silently invisible to the
+    person who tried to pay."""
+
+    serializer_class = UserSubscriptionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return UserSubscription.objects.filter(user=self.request.user).select_related(
+            "plan"
+        )
+
+
+class ApplyCouponView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        code = request.data.get("code", "").strip().upper()
+        try:
+            coupon = Coupon.objects.get(code__iexact=code)
+        except Coupon.DoesNotExist:
+            return Response({"detail": "کد تخفیف نامعتبر است"}, status=400)
+
+        if not coupon.is_valid():
+            return Response(
+                {"detail": "این کد تخفیف منقضی یا غیرفعال شده است"}, status=400
+            )
+
+        return Response({"code": coupon.code, "percent_off": coupon.percent_off})

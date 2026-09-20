@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router";
-import { Clock, ShieldCheck } from "lucide-react";
+import { useParams, } from "react-router";
+import { Clock } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/BookingPage.css";
 
 function BookingPage() {
   const { id } = useParams(); // counselor id
-  const navigate = useNavigate();
 
   const [counselor, setCounselor] = useState(null);
   const [slots, setSlots] = useState([]);
@@ -17,7 +16,6 @@ function BookingPage() {
 
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState("");
-  const [isDone, setIsDone] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -66,40 +64,24 @@ function BookingPage() {
     setBookingError("");
     setIsBooking(true);
     try {
-      // Step 1 — payment. PLACEHOLDER: this calls a local mock
-      // endpoint that always succeeds, since a real gateway (Zarinpal)
-      // isn't wired up yet. Swapping in a real gateway later only
-      // changes this one call, not the booking step after it.
-      const paymentRes = await api.post("/api/payments/mock/", {
-        slot_id: selectedSlotId,
-        amount: counselor.session_price,
-      });
-
-      if (!paymentRes.data.success) {
-        setBookingError("پرداخت ناموفق بود. دوباره تلاش کنید");
-        return;
-      }
-
-      // Step 2 — actually reserve the slot, tied to that payment
-      // reference. The backend re-checks the slot isn't already
-      // booked at this exact moment, even though we filtered to only
-      // show open slots a moment ago.
-      const res = await api.post(`/api/slots/${selectedSlotId}/book/`, {
-        payment_reference: paymentRes.data.reference,
-      });
-
-      setIsDone(true);
+      // Starts a real Zarinpal payment for this slot — the backend
+      // does NOT create the booking yet, only once Zarinpal verifies
+      // the payment on its own callback. This redirects the whole
+      // browser away to Zarinpal's pay page; there's no "step 2" to
+      // call from here anymore.
+      const res = await api.post(`/api/slots/${selectedSlotId}/purchase/`);
+      window.location.href = res.data.pay_url;
     } catch (err) {
       setBookingError(translateApiError(err));
       console.error(err);
-      // Slot might've just been taken by someone else — refresh the
-      // list so the user sees current reality, not stale options.
+      // Slot might've just been taken by someone else, or a payment
+      // is already in progress for it — refresh the list so the user
+      // sees current reality, not stale options.
       api
         .get(`/api/counselors/${id}/slots/`)
         .then((res) => setSlots(res.data.results ?? res.data))
         .catch(() => {});
       setSelectedSlotId(null);
-    } finally {
       setIsBooking(false);
     }
   };
@@ -113,33 +95,6 @@ function BookingPage() {
       <p className="booking-page-status booking-page-status--error">
         {error || "مشاور پیدا نشد"}
       </p>
-    );
-  }
-
-  if (isDone) {
-    return (
-      <div className="booking-page">
-        <div className="booking-success">
-          <span className="booking-success__icon-wrap">
-            <ShieldCheck size={32} />
-          </span>
-          <h1 className="booking-success__title">رزرو شما ثبت شد</h1>
-          <p className="booking-success__text">
-            نوبت شما با <strong>{counselor.name}</strong> با موفقیت رزرو شد.
-          </p>
-          <div className="booking-success__actions">
-            <Link to="/profile" className="booking-page__btn booking-page__btn--primary">
-              مشاهده نوبت‌های من
-            </Link>
-            <Link
-              to={`/CounselorProfile/${id}`}
-              className="booking-page__btn booking-page__btn--ghost"
-            >
-              بازگشت به پروفایل مشاور
-            </Link>
-          </div>
-        </div>
-      </div>
     );
   }
 
@@ -212,7 +167,7 @@ function BookingPage() {
             onClick={handleConfirmBooking}
             disabled={isBooking}
           >
-            {isBooking ? "در حال پردازش..." : "پرداخت و رزرو نهایی"}
+            {isBooking ? "در حال انتقال به درگاه پرداخت..." : "پرداخت و رزرو نهایی"}
           </button>
         </div>
       )}

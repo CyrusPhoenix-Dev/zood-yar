@@ -44,6 +44,11 @@ function jalaliMonthLabel(monthKey) {
   return jd.format("MMMM YYYY");
 }
 
+function dateObjectToGregorianStr(dateObj) {
+  const g = dateObj.convert(gregorian);
+  return `${g.year}-${String(g.month.number).padStart(2, "0")}-${String(g.day).padStart(2, "0")}`;
+}
+
 function CounselorCalendarPage() {
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +60,7 @@ function CounselorCalendarPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [selectedBookingPast, setSelectedBookingPast] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
   // ===== Month → day drill-down =====
@@ -62,6 +68,71 @@ function CounselorCalendarPage() {
 
   const { alertDialog, confirmDialog } = useAppDialog();
   const infoBoxRef = useRef(null);
+  const handleDeleteMonth = async () => {
+    if (!selectedMonthKey) return;
+
+    const [year, month] = selectedMonthKey.split("-").map(Number);
+
+    // Create separate DateObjects so calculating the end date
+    // cannot modify the start date.
+    const startJalali = new DateObject({
+      year,
+      month,
+      day: 1,
+      calendar: persian,
+      locale: persian_fa,
+    });
+
+    const endJalali = new DateObject({
+      year,
+      month,
+      day: 1,
+      calendar: persian,
+      locale: persian_fa,
+    })
+      .add(1, "month")
+      .subtract(1, "day");
+
+    const startStr = dateObjectToGregorianStr(startJalali);
+    const endStr = dateObjectToGregorianStr(endJalali);
+
+    const monthSlotCount = selectedMonthDays.reduce((sum, [, s]) => sum + s.length, 0);
+    const bookedCount = selectedMonthDays.reduce(
+      (sum, [, s]) => sum + s.filter((x) => x.is_booked).length,
+      0
+    );
+    const freeCount = monthSlotCount - bookedCount;
+
+    if (freeCount === 0) {
+      await alertDialog("همه زمان‌های این ماه رزرو شده‌اند و قابل حذف نیستند.");
+      return;
+    }
+
+    const confirmed = await confirmDialog(
+      bookedCount > 0
+        ? `${freeCount} زمان آزاد این ماه حذف می‌شود. ${bookedCount} زمان رزرو شده باقی می‌ماند.`
+        : `آیا از حذف همه زمان‌های این ماه (${freeCount} زمان) مطمئن هستید؟`,
+      { danger: true }
+    );
+    if (!confirmed) return;
+
+    setError("");
+    try {
+      const res = await api.delete(
+        `/api/counselor/slots/range/?start_date=${startStr}&end_date=${endStr}`
+      );
+      await fetchSlots();
+      setSelectedMonthKey(null);
+      if (res.data.booked_remaining > 0) {
+        await alertDialog(
+          `${res.data.deleted} زمان حذف شد. ${res.data.booked_remaining} زمان رزرو شده باقی ماند.`
+        );
+      }
+    } catch (err) {
+      setError(translateApiError(err));
+      console.error(err);
+    }
+  };
 
   const fetchSlots = async () => {
     try {
@@ -241,6 +312,9 @@ function CounselorCalendarPage() {
   function OpenInfo(slot) {
     setSelectedClient(slot.booked_by);
     setSelectedBookingId(slot.booked_by?.id ?? null);
+
+    const sessionStart = new Date(`${slot.date}T${slot.start_time}`);
+    setSelectedBookingPast(sessionStart <= new Date());
   }
 
   return (
@@ -271,6 +345,7 @@ function CounselorCalendarPage() {
               <input
                 id="startTime"
                 type="time"
+                lang="en-GB"
                 className="counselor-calendar-input"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
@@ -283,6 +358,7 @@ function CounselorCalendarPage() {
               <input
                 id="endTime"
                 type="time"
+                lang="en-GB"
                 className="counselor-calendar-input"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
@@ -312,9 +388,19 @@ function CounselorCalendarPage() {
                 <ChevronRight size={16} />
                 بازگشت به ماه‌ها
               </button>
-              <h2 className="counselor-calendar-card__title">
-                {jalaliMonthLabel(selectedMonthKey)}
-              </h2>
+              <div className="counselor-calendar-month-header__row">
+                <h2 className="counselor-calendar-card__title">
+                  {jalaliMonthLabel(selectedMonthKey)}
+                </h2>
+                <button
+                  type="button"
+                  className="counselor-calendar-day__delete-btn"
+                  onClick={handleDeleteMonth}
+                >
+                  <Trash2 size={14} />
+                  حذف کل ماه
+                </button>
+              </div>
             </div>
           ) : (
             <h2 className="counselor-calendar-card__title">تقویم زمان‌های شما</h2>
@@ -425,7 +511,7 @@ function CounselorCalendarPage() {
           <h1>{selectedClient.name}</h1>
           <p>{selectedClient.phone}</p>
 
-          {selectedBookingId && (
+          {selectedBookingId && !selectedBookingPast && (
             <button
               type="button"
               className="open_info__cancel-btn"

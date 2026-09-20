@@ -39,6 +39,12 @@ def counselor_gallery_upload_path(instance, filename):
     return f"counselor_gallery/{username}/{username}_{unique}{ext}"
 
 
+def plan_image_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    unique = uuid.uuid4().hex[:8]
+    return f"plan_images/{unique}{ext}"
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         SUPER_ADMIN = "super_admin", "مدیر کل"
@@ -238,6 +244,33 @@ class Specialty(models.Model):
 
 
 class Counselor(models.Model):
+    PLAN_BRONZE = 'bronze'
+    PLAN_SILVER = 'silver'
+    PLAN_GOLD = 'gold'
+    PLAN_COMPANY = 'company'
+    PLAN_CHOICES = [(PLAN_BRONZE, 'برنزی'), (PLAN_SILVER, 'نقره‌ای'),(PLAN_GOLD,'طلایی'),(PLAN_COMPANY,'سازمانی')]
+
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_BRONZE)
+    plan_expires_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_plan_active(self):
+        return bool(self.plan_expires_at and self.plan_expires_at > timezone.now())
+    def get_active_subscription(self):
+        return (
+            UserSubscription.objects
+            .filter(user_id=self.user_id, status=UserSubscription.Status.ACTIVE, ends_at__gt=timezone.now())
+            .order_by('-ends_at')
+            .first()
+        )
+    def get_last_subscription_end(self):
+        latest = (
+            UserSubscription.objects
+            .filter(user_id=self.user_id)
+            .order_by('-ends_at')
+            .first()
+        )
+        return latest.ends_at if latest else None
     class SessionFormat(models.TextChoices):
         ONLINE = "online", "آنلاین"
         IN_PERSON = "in_person", "حضوری"
@@ -425,6 +458,106 @@ class Booking(models.Model):
 
 
 # models.py, near Booking
+class Plan(models.Model):
+    """A subscription plan shown in the 'پلن‌ها' section — managed
+    from admin, same pattern as HeroSlide, so pricing/feature changes
+    don't need a deploy. price_six_months/price_yearly are optional —
+    leaving one blank hides that billing option on the frontend for
+    this plan, so a plan can offer monthly-only if you want."""
+
+    image = models.ImageField(upload_to=plan_image_upload_path)
+    title = models.CharField(max_length=100)
+    features = models.TextField(help_text="هر ویژگی در یک خط جداگانه")
+    price = models.PositiveIntegerField("قیمت ماهانه (تومان)")
+    price_six_months = models.PositiveIntegerField(
+        "قیمت ۶ ماهه (تومان)",
+        null=True,
+        blank=True,
+        help_text="خالی بگذارید تا این گزینه نمایش داده نشود",
+    )
+    price_yearly = models.PositiveIntegerField(
+        "قیمت سالانه (تومان)",
+        null=True,
+        blank=True,
+        help_text="خالی بگذارید تا این گزینه نمایش داده نشود",
+    )
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Tier(models.TextChoices):
+        BRONZE = 'bronze', 'برنزی'
+        SILVER = 'silver', 'نقره‌ای'
+        GOLD = 'gold', 'طلایی'
+        COMPANY = 'company', 'سازمانی'
+
+    tier = models.CharField(max_length=20, choices=Tier.choices, default=Tier.BRONZE)
+    
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def price_for_period(self, period):
+        return {
+            BillingPeriod.MONTHLY: self.price,
+            BillingPeriod.SIX_MONTHS: self.price_six_months,
+            BillingPeriod.YEARLY: self.price_yearly,
+        }.get(period)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = Plan.objects.filter(pk=self.pk).only("image").first()
+            if old and old.image and old.image.name != self.image.name:
+                old.image.delete(save=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
+@receiver(post_delete, sender=Plan)
+def delete_plan_image(sender, instance, **kwargs):
+    if instance.image:
+        instance.image.delete(save=False)
+
+class BillingPeriod(models.TextChoices):
+    MONTHLY = "monthly", "ماهانه"
+    SIX_MONTHS = "six_months", "۶ ماهه"
+    YEARLY = "yearly", "سالانه"
+
+
+BILLING_PERIOD_DAYS = {
+    BillingPeriod.MONTHLY: 30,
+    BillingPeriod.SIX_MONTHS: 182,
+    BillingPeriod.YEARLY: 365,
+}
+
+class UserSubscription(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار پرداخت"
+        ACTIVE = "active", "فعال"
+        CANCELLED = "cancelled", "لغو شده"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="subscriptions"
+    )
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="purchases")
+    billing_period = models.CharField(
+        max_length=20, choices=BillingPeriod.choices, default=BillingPeriod.MONTHLY
+    )
+    price_at_purchase = models.PositiveIntegerField()
+    coupon = models.ForeignKey(
+        "Coupon",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subscriptions",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class PaymentTransaction(models.Model):
@@ -434,6 +567,21 @@ class PaymentTransaction(models.Model):
     payment never becomes a Booking, but it's still a real financial
     event worth recording (reconciliation, debugging "why didn't my
     payment go through" support tickets, fraud patterns, etc.)."""
+
+    class Purpose(models.TextChoices):
+        BOOKING = "booking", "رزرو نوبت"
+        SUBSCRIPTION = "subscription", "خرید اشتراک"
+
+    purpose = models.CharField(
+        max_length=20, choices=Purpose.choices, default=Purpose.BOOKING
+    )
+    subscription = models.ForeignKey(
+        UserSubscription,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
 
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار پرداخت"
@@ -492,6 +640,7 @@ class PaymentTransaction(models.Model):
 REFUND_CUTOFF_DAYS = (
     3  # cancel ≥3 days before session start = refund; inside that window = no refund
 )
+BOOKING_PAYMENT_TIMEOUT_MINUTES = 15
 
 
 class CounselorNote(models.Model):
@@ -676,11 +825,13 @@ class ScheduleException(models.Model):
     class Meta:
         ordering = ["date"]
 
+
 class Holiday(models.Model):
     """Official (non-counselor-specific) holidays — Nowruz, religious
     observances, etc. Seeded via admin or a management command from an
     external source once per year, not fetched live at generation
     time. Shared across every counselor's schedule."""
+
     date = models.DateField(unique=True)
     name = models.CharField(max_length=200)
 
@@ -689,3 +840,131 @@ class Holiday(models.Model):
 
     def __str__(self):
         return f"{self.date} — {self.name}"
+
+
+def hero_slide_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    unique = uuid.uuid4().hex[:8]
+    return f"hero_slides/{unique}{ext}"
+
+
+class HeroSlide(models.Model):
+    """One slide in the homepage hero slider — managed entirely from
+    admin so non-technical changes (swap a photo, reorder, retire a
+    slide) don't need a code deploy."""
+
+    image = models.ImageField(upload_to=hero_slide_upload_path)
+    title = models.CharField(max_length=200, blank=True)
+    subtitle = models.CharField(max_length=300, blank=True)
+    link_url = models.CharField(max_length=300, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return self.title or f"Slide {self.pk}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = HeroSlide.objects.filter(pk=self.pk).only("image").first()
+            if old and old.image and old.image.name != self.image.name:
+                old.image.delete(save=False)
+        super().save(*args, **kwargs)
+
+
+@receiver(post_delete, sender=HeroSlide)
+def delete_hero_slide_image(sender, instance, **kwargs):
+    if instance.image:
+        instance.image.delete(save=False)
+
+
+class Coupon(models.Model):
+    """Reusable discount code — percentage off, entered by the user
+    at checkout. Not tied to a specific plan; usable against any
+    active plan unless you want per-plan restriction later."""
+
+    code = models.CharField(max_length=50, unique=True)
+    percent_off = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+    is_active = models.BooleanField(default=True)
+    # Optional cap — null means unlimited. Each use increments
+    # times_used; enforced at purchase time.
+    max_uses = models.PositiveIntegerField(null=True, blank=True)
+    times_used = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False
+        if self.max_uses is not None and self.times_used >= self.max_uses:
+            return False
+        return True
+
+    def __str__(self):
+        return f"{self.code} (%{self.percent_off})"
+
+
+class PlanSale(models.Model):
+    """An automatic, time-bound discount on one specific Plan — no
+    code needed, shown directly on the plan card while active.
+    Supports either a flat amount off or a percentage off; the
+    frontend always DISPLAYS a percentage badge regardless of which
+    kind this is, computed from percent_off_display()."""
+
+    class DiscountType(models.TextChoices):
+        PERCENT = "percent", "درصدی"
+        FLAT = "flat", "مبلغ ثابت"
+
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE, related_name="sales")
+    discount_type = models.CharField(max_length=10, choices=DiscountType.choices)
+    percent_off = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+    amount_off = models.PositiveIntegerField(null=True, blank=True, help_text="تومان")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-starts_at"]
+
+    def clean(self):
+        if self.discount_type == self.DiscountType.PERCENT and not self.percent_off:
+            raise ValidationError("برای تخفیف درصدی، درصد را وارد کنید")
+        if self.discount_type == self.DiscountType.FLAT and not self.amount_off:
+            raise ValidationError("برای تخفیف مبلغ ثابت، مبلغ را وارد کنید")
+        if self.starts_at >= self.ends_at:
+            raise ValidationError("زمان پایان باید بعد از زمان شروع باشد")
+
+    def is_currently_active(self):
+        now = timezone.now()
+        return self.is_active and self.starts_at <= now <= self.ends_at
+
+    def discounted_price(self, original_price):
+        if self.discount_type == self.DiscountType.PERCENT:
+            return max(0, original_price - (original_price * self.percent_off // 100))
+        return max(0, original_price - self.amount_off)
+
+    def percent_off_display(self, original_price):
+        """Always returns a percentage for the badge, even for a
+        flat-amount sale — computed from the actual discount so the
+        displayed number is honest, not a separate hand-entered field
+        that could drift from the real math."""
+        if self.discount_type == self.DiscountType.PERCENT:
+            return self.percent_off
+        if original_price <= 0:
+            return 0
+        return round((self.amount_off / original_price) * 100)
+
+    def __str__(self):
+        return f"{self.plan.title} — {self.get_discount_type_display()}"
+
+
+

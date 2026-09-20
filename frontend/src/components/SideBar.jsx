@@ -7,6 +7,7 @@ import {
   CalendarDays,
   UserRoundArrowLeft,
   RectangleEllipsis,
+  CreditCard,
 } from "lucide-react";
 import api from "../api";
 import "../styles/SideBar.css";
@@ -14,11 +15,10 @@ import "../styles/SideBar.css";
 const navItems = [
   { label: "ویرایش پروفایل", icon: UserCog, section: "editInfo" },
   { label: "وقت های من", icon: FileText, section: "sessions" },
+  { label: "اشتراک‌های من", icon: CreditCard, section: "subscriptions" },
   { label: "تایید شماره همراه", icon: RectangleEllipsis, section: "phoneAuth" },
   { label: "ویرایش رمزعبور", icon: Key, section: "resetPassword" },
   { label: "پشتیبانی", icon: LifeBuoy, section: "support" },
-  // These two only make sense for a counselor account — a regular
-  // client user has no calendar to manage and no clients to see.
   { label: "اطلاعات مشاور", icon: LifeBuoy, section: "CounselorInfo", counselorOnly: true },
   { label: "تقویم من", icon: CalendarDays, section: "counselorCalender", counselorOnly: true },
   { label: "مراجعین من", icon: UserRoundArrowLeft, section: "counselorClients", counselorOnly: true },
