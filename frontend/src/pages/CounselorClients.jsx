@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Phone, StickyNote, Send, Trash2 } from "lucide-react";
+import { Phone, StickyNote, Send, Trash2, Mic, MicOff } from "lucide-react";
 import api from "../api";
 import { translateApiError } from "../utils/apiErrors";
+import { useSpeechToText } from "../hooks/useSpeechToText";
 import "../styles/CounselorClients.css";
 
 function CounselorClientsPage() {
@@ -15,6 +16,23 @@ function CounselorClientsPage() {
   const [newNote, setNewNote] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
 
+  // Appends each finished phrase to whatever's already typed, with a
+  // separating space — doesn't overwrite manual typing, so a
+  // counselor can mix voice and keyboard freely in the same note.
+  const { isListening, isSupported, start, stop } = useSpeechToText({
+    onResult: (transcript) => {
+      setNewNote((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    },
+  });
+
+  const toggleListening = () => {
+    if (isListening) {
+      stop();
+    } else {
+      start();
+    }
+  };
+
   useEffect(() => {
     api
       .get("/api/counselor/bookings/")
@@ -26,8 +44,6 @@ function CounselorClientsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Unique clients, since one client may appear multiple times (one
-  // per past booking) — the list should show one row per person.
   const uniqueClients = Object.values(
     bookings.reduce((acc, b) => {
       if (!acc[b.client_id]) {
@@ -58,6 +74,7 @@ function CounselorClientsPage() {
   };
 
   const handleSelectClient = (clientId) => {
+    if (isListening) stop(); // don't leave the mic running across client switches
     setSelectedClientId(clientId);
     setNewNote("");
     fetchNotes(clientId);
@@ -66,6 +83,7 @@ function CounselorClientsPage() {
   const handleAddNote = async (e) => {
     e.preventDefault();
     if (!newNote.trim()) return;
+    if (isListening) stop();
     setIsSavingNote(true);
     try {
       const res = await api.post("/api/counselor/notes/", {
@@ -96,10 +114,8 @@ function CounselorClientsPage() {
 
   return (
     <div className="counselor-clients-page">
-
       <div className="counselor-clients-content">
         <div className="counselor-clients-inner">
-          {/* ===== Client list ===== */}
           <div className="counselor-clients-card counselor-clients-card--list">
             <h1 className="counselor-clients-card__title">کاربران شما</h1>
 
@@ -120,7 +136,6 @@ function CounselorClientsPage() {
                       onClick={() => handleSelectClient(client.id)}
                     >
                       <span className="counselor-client-item__icon">
-                        {/* <User size={16} /> */}
                         <img src={client.avatar} alt={client.name} />
                       </span>
                       <span className="counselor-client-item__text">
@@ -136,7 +151,6 @@ function CounselorClientsPage() {
             )}
           </div>
 
-          {/* ===== Selected client detail + private notes ===== */}
           <div className="counselor-clients-card counselor-clients-card--detail">
             {!selectedClient ? (
               <p className="counselor-clients-status">
@@ -163,13 +177,33 @@ function CounselorClientsPage() {
                   </h3>
 
                   <form className="counselor-notes-form" onSubmit={handleAddNote}>
-                    <textarea
-                      className="counselor-notes-input"
-                      rows={3}
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                      placeholder="یادداشت جدید درباره این کاربر..."
-                    />
+                    <div className="counselor-notes-input-wrap">
+                      <textarea
+                        className="counselor-notes-input"
+                        rows={3}
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        placeholder="یادداشت جدید درباره این کاربر..."
+                      />
+                      {isSupported && (
+                        <button
+                          type="button"
+                          className={`counselor-notes-mic-btn ${isListening ? "counselor-notes-mic-btn--active" : ""}`}
+                          onClick={toggleListening}
+                          aria-label={isListening ? "توقف ضبط صدا" : "شروع تبدیل گفتار به متن"}
+                        >
+                          {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                        </button>
+                      )}
+                    </div>
+
+                    {isSupported && (
+                      <p className="counselor-notes-mic-hint">
+                        تبدیل گفتار به متن توسط مرورگر شما پردازش می‌شود.
+                        {isListening && " در حال شنیدن..."}
+                      </p>
+                    )}
+
                     <button
                       type="submit"
                       className="counselor-notes-submit"
