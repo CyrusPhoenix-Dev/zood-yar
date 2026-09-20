@@ -131,13 +131,11 @@
   color: var(--text-secondary);
   margin: 0 0 var(--space-3) 0;
 
-  /* clamp to 2 lines so cards stay equal height regardless of
-     description length */
   display: -webkit-box;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  height: 50px;
-  overflow-y: scroll;
+  text-overflow: ellipsis;
 }
 
 .counselor-card__meta {
