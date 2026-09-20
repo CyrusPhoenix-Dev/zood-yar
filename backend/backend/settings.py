@@ -187,4 +187,4 @@ KAVENEGAR_SENDER = env("KAVENEGAR_SENDER")
 
 ZARINPAL_MERCHANT_ID = env("ZARINPAL_MERCHANT_ID", default="")
 ZARINPAL_SANDBOX = env.bool("ZARINPAL_SANDBOX", default=True)
-FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+FRONTEND_URL = env("FRONTEND_URL", default="https://zood-yar.ir")
