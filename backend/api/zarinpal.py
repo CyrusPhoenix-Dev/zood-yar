@@ -33,7 +33,15 @@ def request_payment(amount_rial, description, callback_url, mobile=None):
         payload["metadata"] = {"mobile": mobile}
 
     resp = requests.post(_urls()["request"], json=payload, timeout=15)
-    resp.raise_for_status()
+
+    try:
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError:
+        # Zarinpal returns a JSON body with the real reason even on
+        # 4xx/5xx — surface it instead of losing it to a bare 500.
+        print("ZARINPAL ERROR RESPONSE:", resp.text)
+        return {"success": False, "errors": resp.json().get("errors", resp.text)}
+
     data = resp.json().get("data", {})
 
     if data.get("code") == 100:
@@ -43,7 +51,6 @@ def request_payment(amount_rial, description, callback_url, mobile=None):
             "pay_url": _urls()["startpay"] + data["authority"],
         }
     return {"success": False, "errors": resp.json().get("errors")}
-
 
 def verify_payment(amount_rial, authority):
     payload = {
