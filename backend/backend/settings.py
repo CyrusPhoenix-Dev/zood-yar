@@ -29,7 +29,7 @@ SECRET_KEY = env("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["zood-yar.ir", "www.zood-yar.ir", "zood-yar-production.up.railway.app"]
 CSRF_TRUSTED_ORIGINS = [
     "https://zood-yar-production.up.railway.app",
 ]
@@ -176,8 +176,14 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # check them too
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "https://zood-yar.ir",
+    "https://www.zood-yar.ir",
+]
+CORS_ALLOW_ALL_ORIGINS = False
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
