@@ -37,6 +37,7 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
         queryset=Specialty.objects.all(), many=True, required=False
     )
     has_auto_generator_access = serializers.SerializerMethodField()
+    has_voice_notes_access = serializers.SerializerMethodField()
 
     class Meta:
         model = Counselor
@@ -54,9 +55,18 @@ class CounselorSelfSerializer(serializers.ModelSerializer):
             "slug",
             "is_verified",
             "has_auto_generator_access",
+            "has_voice_notes_access",
         ]
-        read_only_fields = ["is_verified", "has_auto_generator_access"]
-
+        read_only_fields = [
+            "is_verified",
+            "has_auto_generator_access",
+            "has_voice_notes_access",
+        ]
+        
+    def get_has_voice_notes_access(self, obj):
+        sub = obj.get_active_subscription()
+        return bool(sub and sub.plan.tier != Plan.Tier.BRONZE)
+    
     def get_has_auto_generator_access(self, obj):
         sub = obj.get_active_subscription()
         return bool(

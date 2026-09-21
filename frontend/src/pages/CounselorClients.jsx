@@ -10,7 +10,7 @@ function CounselorClientsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedClientId, setSelectedClientId] = useState(null);
-
+  const [hasVoiceAccess, setHasVoiceAccess] = useState(null);
   const [notes, setNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [newNote, setNewNote] = useState("");
@@ -32,7 +32,11 @@ function CounselorClientsPage() {
       start();
     }
   };
-
+  useEffect(() => {
+    api.get("/api/counselor/me/")
+      .then((res) => setHasVoiceAccess(res.data.has_voice_notes_access))
+      .catch(() => setHasVoiceAccess(false));
+  }, []);
   useEffect(() => {
     api
       .get("/api/counselor/bookings/")
@@ -185,7 +189,7 @@ function CounselorClientsPage() {
                         onChange={(e) => setNewNote(e.target.value)}
                         placeholder="یادداشت جدید درباره این کاربر..."
                       />
-                      {isSupported && (
+                      {isSupported && hasVoiceAccess && (
                         <button
                           type="button"
                           className={`counselor-notes-mic-btn ${isListening ? "counselor-notes-mic-btn--active" : ""}`}
@@ -197,7 +201,7 @@ function CounselorClientsPage() {
                       )}
                     </div>
 
-                    {isSupported && (
+                    {isSupported && hasVoiceAccess && (
                       <p className="counselor-notes-mic-hint">
                         تبدیل گفتار به متن توسط مرورگر شما پردازش می‌شود.
                         {isListening && " در حال شنیدن..."}
