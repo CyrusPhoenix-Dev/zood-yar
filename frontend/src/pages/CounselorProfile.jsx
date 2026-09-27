@@ -5,7 +5,6 @@ import api from "../api";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorProfile.css";
-import { Helmet } from "react-helmet-async";
 
 const sessionFormatLabels = {
   online: "آنلاین",
@@ -57,6 +56,15 @@ function CounselorProfilePage() {
   // by the counselor's numeric id — so this has to be sequential, not
   // Promise.all: we only learn the numeric id once the first request
   // (by slug) comes back.
+  useEffect(() => {
+    if (counselor?.name) {
+      document.title = `${counselor.name} | زودیار`;
+    }
+
+    return () => {
+      document.title = "زودیار | پلتفرم رزرو آنلاین مشاوره و خدمات";
+    };
+  }, [counselor]);
   useEffect(() => {
     setIsLoading(true);
     setError("");
@@ -152,10 +160,7 @@ function CounselorProfilePage() {
 
   return (
     <>
-      <Helmet>
-        <title>{counselor.name} | زودیار</title>
-        <meta name="description" content={counselor.bio?.slice(0, 150)} />
-      </Helmet>
+      <meta name="description" content={counselor.bio?.slice(0, 150)} />
       <div className="counselor-profile-page">
         {/* ===== Header ===== */}
         <div className="counselor-profile-header">

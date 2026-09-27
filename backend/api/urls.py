@@ -56,7 +56,6 @@ from .views import (
     BookingPurchaseInitView,
     BookingVerifyView,
     ApplyCouponView,
-    SitemapView,
 )
 from .support_views import (
     MyTicketListCreateView,
