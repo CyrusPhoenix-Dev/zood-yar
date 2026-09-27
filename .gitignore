@@ -32,3 +32,4 @@ private-key-file.pem
 public-key-file.pub
 
 backup/
+general/
