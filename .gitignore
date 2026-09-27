@@ -30,3 +30,5 @@ frontend/dist/
 *.log
 private-key-file.pem
 public-key-file.pub
+
+backup
