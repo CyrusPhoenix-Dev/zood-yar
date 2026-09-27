@@ -74,6 +74,7 @@ function CounselorsPage() {
 
   return (
     <>
+    
       {/* ===== TOP COUNSELORS SLIDER ===== */}
       <CounselorSlider />
 

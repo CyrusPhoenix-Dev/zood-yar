@@ -5,6 +5,7 @@ import api from "../api";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { translateApiError } from "../utils/apiErrors";
 import "../styles/CounselorProfile.css";
+import { Helmet } from "react-helmet-async";
 
 const sessionFormatLabels = {
   online: "آنلاین",
@@ -150,225 +151,231 @@ function CounselorProfilePage() {
     counselor.address;
 
   return (
-    <div className="counselor-profile-page">
-      {/* ===== Header ===== */}
-      <div className="counselor-profile-header">
-        <img
-          src={counselor.avatar || "/default-avatar.png"}
-          alt={counselor.name}
-          className="counselor-profile-avatar"
-          onClick={counselor.avatar ? () => setLightboxImage(counselor.avatar) : undefined}
-          role={counselor.avatar ? "button" : undefined}
-          tabIndex={counselor.avatar ? 0 : undefined}
-          onKeyDown={
-            counselor.avatar
-              ? (e) => {
+    <>
+      <Helmet>
+        <title>{counselor.name} | زودیار</title>
+        <meta name="description" content={counselor.bio?.slice(0, 150)} />
+      </Helmet>
+      <div className="counselor-profile-page">
+        {/* ===== Header ===== */}
+        <div className="counselor-profile-header">
+          <img
+            src={counselor.avatar || "/default-avatar.png"}
+            alt={counselor.name}
+            className="counselor-profile-avatar"
+            onClick={counselor.avatar ? () => setLightboxImage(counselor.avatar) : undefined}
+            role={counselor.avatar ? "button" : undefined}
+            tabIndex={counselor.avatar ? 0 : undefined}
+            onKeyDown={
+              counselor.avatar
+                ? (e) => {
                   if (e.key === "Enter" || e.key === " ") setLightboxImage(counselor.avatar);
                 }
-              : undefined
-          }
-          style={counselor.avatar ? { cursor: "pointer" } : undefined}
-        />
-        <div className="counselor-profile-header__info">
-          <h1 className="counselor-profile-name">{counselor.name}</h1>
+                : undefined
+            }
+            style={counselor.avatar ? { cursor: "pointer" } : undefined}
+          />
+          <div className="counselor-profile-header__info">
+            <h1 className="counselor-profile-name">{counselor.name}</h1>
 
-          <div className="counselor-profile-meta">
-            <span className="counselor-profile-meta-item">
-              <Star size={16} className="counselor-profile-star--filled" />
-              {counselor.rating != null ? counselor.rating.toLocaleString("fa-IR") : "بدون امتیاز"}
-            </span>
-            <span className="counselor-profile-meta-item">
-              <Users size={16} />
-              {counselor.bookings.toLocaleString("fa-IR")} رزرو
-            </span>
-            {counselor.years_of_experience > 0 && (
+            <div className="counselor-profile-meta">
               <span className="counselor-profile-meta-item">
-                <Briefcase size={16} />
-                {counselor.years_of_experience.toLocaleString("fa-IR")} سال سابقه
+                <Star size={16} className="counselor-profile-star--filled" />
+                {counselor.rating != null ? counselor.rating.toLocaleString("fa-IR") : "بدون امتیاز"}
               </span>
-            )}
-            {counselor.session_format && (
               <span className="counselor-profile-meta-item">
-                {sessionFormatLabels[counselor.session_format] || counselor.session_format}
+                <Users size={16} />
+                {counselor.bookings.toLocaleString("fa-IR")} رزرو
               </span>
-            )}
-            {counselor.city && (
-              <span className="counselor-profile-meta-item">
-                <MapPin size={16} />
-                {counselor.city}
-              </span>
-            )}
-          </div>
-
-          {counselor.specialties?.length > 0 && (
-            <div className="counselor-profile-specialties">
-              {counselor.specialties.map((sp) => (
-                <span key={sp.slug} className="counselor-profile-specialty-chip">
-                  {sp.label}
+              {counselor.years_of_experience > 0 && (
+                <span className="counselor-profile-meta-item">
+                  <Briefcase size={16} />
+                  {counselor.years_of_experience.toLocaleString("fa-IR")} سال سابقه
                 </span>
+              )}
+              {counselor.session_format && (
+                <span className="counselor-profile-meta-item">
+                  {sessionFormatLabels[counselor.session_format] || counselor.session_format}
+                </span>
+              )}
+              {counselor.city && (
+                <span className="counselor-profile-meta-item">
+                  <MapPin size={16} />
+                  {counselor.city}
+                </span>
+              )}
+            </div>
+
+            {counselor.specialties?.length > 0 && (
+              <div className="counselor-profile-specialties">
+                {counselor.specialties.map((sp) => (
+                  <span key={sp.slug} className="counselor-profile-specialty-chip">
+                    {sp.label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <Link to={`/BookingPage/${counselor.id}`} className="counselor-profile-book-btn">
+              رزرو نوبت
+            </Link>
+          </div>
+        </div>
+
+        {/* ===== Bio ===== */}
+        {counselor.bio && (
+          <div className="counselor-profile-card">
+            <h2 className="counselor-profile-card__title">درباره</h2>
+            <p className="counselor-profile-bio">{counselor.bio}</p>
+          </div>
+        )}
+
+        {/* ===== Gallery — self/room photos, only shown when at least
+          one exists ===== */}
+        {counselor.gallery_images?.length > 0 && (
+          <div className="counselor-profile-card">
+            <h2 className="counselor-profile-card__title">تصاویر</h2>
+            <div className="counselor-profile-gallery">
+              {counselor.gallery_images.map((img) => (
+                <img
+                  key={img.id}
+                  src={img.image}
+                  alt=""
+                  className="counselor-profile-gallery__img"
+                  onClick={() => setLightboxImage(img.image)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setLightboxImage(img.image);
+                  }}
+                />
               ))}
             </div>
-          )}
-
-          <Link to={`/BookingPage/${counselor.id}`} className="counselor-profile-book-btn">
-            رزرو نوبت
-          </Link>
-        </div>
-      </div>
-
-      {/* ===== Bio ===== */}
-      {counselor.bio && (
-        <div className="counselor-profile-card">
-          <h2 className="counselor-profile-card__title">درباره</h2>
-          <p className="counselor-profile-bio">{counselor.bio}</p>
-        </div>
-      )}
-
-      {/* ===== Gallery — self/room photos, only shown when at least
-          one exists ===== */}
-      {counselor.gallery_images?.length > 0 && (
-        <div className="counselor-profile-card">
-          <h2 className="counselor-profile-card__title">تصاویر</h2>
-          <div className="counselor-profile-gallery">
-            {counselor.gallery_images.map((img) => (
-              <img
-                key={img.id}
-                src={img.image}
-                alt=""
-                className="counselor-profile-gallery__img"
-                onClick={() => setLightboxImage(img.image)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setLightboxImage(img.image);
-                }}
-              />
-            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ===== Address — only for in-person/both, and only when the
+        {/* ===== Address — only for in-person/both, and only when the
           counselor has actually filled one in ===== */}
-      {showAddress && (
-        <div className="counselor-profile-card">
-          <h2 className="counselor-profile-card__title">
-            <MapPin size={18} />
-            آدرس محل مشاوره
-          </h2>
-          <p className="counselor-profile-bio">{counselor.address}</p>
-        </div>
-      )}
+        {showAddress && (
+          <div className="counselor-profile-card">
+            <h2 className="counselor-profile-card__title">
+              <MapPin size={18} />
+              آدرس محل مشاوره
+            </h2>
+            <p className="counselor-profile-bio">{counselor.address}</p>
+          </div>
+        )}
 
-      {/* ===== Leave a review =====
+        {/* ===== Leave a review =====
           - Not logged in → soft prompt to log in, no form
           - Logged in but no eligible completed booking → nothing shown
           - Logged in with an eligible booking → the actual form */}
-      {!isAuthenticated ? (
-        <div className="counselor-profile-card counselor-profile-login-prompt">
-          <LogIn size={18} />
-          <span>
-            برای ثبت نظر و امتیاز، ابتدا{" "}
-            <Link to="/login" className="counselor-profile-login-link">
-              وارد حساب کاربری
-            </Link>{" "}
-            خود شوید.
-          </span>
-        </div>
-      ) : (
-        reviewableBookingId ? (
-          <div className="counselor-profile-card">
-            <h2 className="counselor-profile-card__title">ثبت نظر شما</h2>
-            <form onSubmit={handleSubmitReview}>
-              <StarPicker value={rating} onChange={setRating} />
-
-              <textarea
-                className="counselor-profile-comment-input"
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="تجربه خود از این جلسه را بنویسید (اختیاری)"
-              />
-
-              {submitError && <p className="counselor-profile-error">{submitError}</p>}
-
-              <button
-                type="submit"
-                className="counselor-profile-submit-btn"
-                disabled={isSubmitting}
-              >
-                <Send size={14} />
-                {isSubmitting ? "در حال ثبت..." : "ثبت نظر"}
-              </button>
-            </form>
+        {!isAuthenticated ? (
+          <div className="counselor-profile-card counselor-profile-login-prompt">
+            <LogIn size={18} />
+            <span>
+              برای ثبت نظر و امتیاز، ابتدا{" "}
+              <Link to="/login" className="counselor-profile-login-link">
+                وارد حساب کاربری
+              </Link>{" "}
+              خود شوید.
+            </span>
           </div>
         ) : (
-          submitSuccess && (
-            <div className="counselor-profile-card counselor-profile-pending-notice">
-              نظر شما ثبت شد و پس از بررسی و تایید، به‌صورت عمومی نمایش داده خواهد شد.
+          reviewableBookingId ? (
+            <div className="counselor-profile-card">
+              <h2 className="counselor-profile-card__title">ثبت نظر شما</h2>
+              <form onSubmit={handleSubmitReview}>
+                <StarPicker value={rating} onChange={setRating} />
+
+                <textarea
+                  className="counselor-profile-comment-input"
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="تجربه خود از این جلسه را بنویسید (اختیاری)"
+                />
+
+                {submitError && <p className="counselor-profile-error">{submitError}</p>}
+
+                <button
+                  type="submit"
+                  className="counselor-profile-submit-btn"
+                  disabled={isSubmitting}
+                >
+                  <Send size={14} />
+                  {isSubmitting ? "در حال ثبت..." : "ثبت نظر"}
+                </button>
+              </form>
             </div>
+          ) : (
+            submitSuccess && (
+              <div className="counselor-profile-card counselor-profile-pending-notice">
+                نظر شما ثبت شد و پس از بررسی و تایید، به‌صورت عمومی نمایش داده خواهد شد.
+              </div>
+            )
           )
-        )
-      )}
+        )}
 
-      {/* ===== Existing reviews — always visible, logged in or not ===== */}
-      <div className="counselor-profile-card">
-        <h2 className="counselor-profile-card__title">
-          نظرات کاربران ({reviews.length.toLocaleString("fa-IR")})
-        </h2>
+        {/* ===== Existing reviews — always visible, logged in or not ===== */}
+        <div className="counselor-profile-card">
+          <h2 className="counselor-profile-card__title">
+            نظرات کاربران ({reviews.length.toLocaleString("fa-IR")})
+          </h2>
 
-        {reviews.length === 0 ? (
-          <p className="counselor-profile-status">هنوز نظری ثبت نشده است.</p>
-        ) : (
-          <ul className="counselor-profile-reviews-list">
-            {reviews.map((r) => (
-              <li key={r.id} className="counselor-profile-review-item">
-                <div className="counselor-profile-review-item__header">
-                  <span className="counselor-profile-review-item__name">{r.reviewer_name}</span>
-                  <span className="counselor-profile-review-item__stars">
-                    {"★".repeat(r.rating)}
-                    {"☆".repeat(5 - r.rating)}
+          {reviews.length === 0 ? (
+            <p className="counselor-profile-status">هنوز نظری ثبت نشده است.</p>
+          ) : (
+            <ul className="counselor-profile-reviews-list">
+              {reviews.map((r) => (
+                <li key={r.id} className="counselor-profile-review-item">
+                  <div className="counselor-profile-review-item__header">
+                    <span className="counselor-profile-review-item__name">{r.reviewer_name}</span>
+                    <span className="counselor-profile-review-item__stars">
+                      {"★".repeat(r.rating)}
+                      {"☆".repeat(5 - r.rating)}
+                    </span>
+                  </div>
+                  {r.comment && (
+                    <p className="counselor-profile-review-item__comment">{r.comment}</p>
+                  )}
+                  <span className="counselor-profile-review-item__date">
+                    {new Date(r.created_at).toLocaleDateString("fa-IR")}
                   </span>
-                </div>
-                {r.comment && (
-                  <p className="counselor-profile-review-item__comment">{r.comment}</p>
-                )}
-                <span className="counselor-profile-review-item__date">
-                  {new Date(r.created_at).toLocaleDateString("fa-IR")}
-                </span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {lightboxImage && (
+          <div
+            className="counselor-profile-lightbox"
+            onClick={() => setLightboxImage(null)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setLightboxImage(null);
+            }}
+          >
+            <button
+              type="button"
+              className="counselor-profile-lightbox__close"
+              onClick={() => setLightboxImage(null)}
+              aria-label="بستن"
+            >
+              ×
+            </button>
+            <img
+              src={lightboxImage}
+              alt=""
+              className="counselor-profile-lightbox__img"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         )}
       </div>
-
-      {lightboxImage && (
-        <div
-          className="counselor-profile-lightbox"
-          onClick={() => setLightboxImage(null)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setLightboxImage(null);
-          }}
-        >
-          <button
-            type="button"
-            className="counselor-profile-lightbox__close"
-            onClick={() => setLightboxImage(null)}
-            aria-label="بستن"
-          >
-            ×
-          </button>
-          <img
-            src={lightboxImage}
-            alt=""
-            className="counselor-profile-lightbox__img"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

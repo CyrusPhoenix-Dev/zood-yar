@@ -22,6 +22,7 @@ from .zarinpal import request_payment, verify_payment
 from .token_serializers import CustomTokenObtainPairSerializer
 from django.conf import settings
 from .permissions import HasAutoGeneratorAccess
+from django.http import HttpResponse
 
 from .models import (
     OtpCode,
@@ -356,6 +357,7 @@ class BookingPurchaseInitView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
+        print("BOOKING PURCHASE INIT CALLED", pk)
         slot = get_object_or_404(AvailabilitySlot, pk=pk)
 
         if slot.is_booked:
@@ -1359,3 +1361,25 @@ class ApplyCouponView(APIView):
             )
 
         return Response({"code": coupon.code, "percent_off": coupon.percent_off})
+
+class SitemapView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        base = settings.FRONTEND_URL
+        urls = [
+            {"loc": f"{base}/", "priority": "1.0"},
+            {"loc": f"{base}/counselors", "priority": "0.9"},
+            {"loc": f"{base}/plans", "priority": "0.7"},
+        ]
+        counselors = Counselor.objects.filter(is_verified=True, is_purged=False)
+        for c in counselors:
+            urls.append({"loc": f"{base}/CounselorProfile/{c.slug}", "priority": "0.8"})
+
+        xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+               '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+        for u in urls:
+            xml.append(f'<url><loc>{u["loc"]}</loc><priority>{u["priority"]}</priority></url>')
+        xml.append('</urlset>')
+
+        return HttpResponse("\n".join(xml), content_type="application/xml")

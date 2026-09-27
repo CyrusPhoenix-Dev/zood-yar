@@ -23,6 +23,7 @@ def _urls():
 
 
 def request_payment(amount_rial, description, callback_url, mobile=None):
+    print("REQUEST_PAYMENT CALLED", amount_rial, callback_url)
     payload = {
         "merchant_id": settings.ZARINPAL_MERCHANT_ID,
         "amount": amount_rial,
@@ -50,6 +51,7 @@ def request_payment(amount_rial, description, callback_url, mobile=None):
             "authority": data["authority"],
             "pay_url": _urls()["startpay"] + data["authority"],
         }
+    print("ZARINPAL NON-SUCCESS RESPONSE:", resp.json())
     return {"success": False, "errors": resp.json().get("errors")}
 
 def verify_payment(amount_rial, authority):
