@@ -76,15 +76,11 @@ function Footer() {
             <ul className="footer__list footer__list--contact">
               <li>
                 <Phone size={16} />
-                <span>09929542476</span>
+                <a href="tel:09929542476" className="footer__link" dir="ltr">09929542476</a>
               </li>
               <li>
                 <Mail size={16} />
-                <span>korosh.ardestani.289@gmail.com</span>
-              </li>
-              <li>
-                <MapPin size={16} />
-                <span>مشهد راهنمایی 2 پلاک 110 زنگ اول طبقه همکف</span>
+                <a href="mailto:korosh.ardestani.289@gmail.com" className="footer__link" dir="ltr">korosh.ardestani.289@gmail.com</a>
               </li>
               <li>
                 <a
@@ -92,12 +88,14 @@ function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://trustseal.enamad.ir/?id=7666369&Code=aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
+                  aria-label="نماد اعتماد الکترونیکی اینماد"
                 >
                   <img
                     referrerPolicy="origin"
                     src="https://trustseal.enamad.ir/logo.aspx?id=7666369&Code=aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
-                    alt="Enamad"
+                    alt=""
                     style={{ cursor: "pointer" }}
+                    code="aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
                   />
                 </a>
               </li>

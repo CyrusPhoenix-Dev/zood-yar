@@ -1366,20 +1366,27 @@ class SitemapView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        base = settings.FRONTEND_URL
+        base = settings.FRONTEND_URL.rstrip("/")
         urls = [
-            {"loc": f"{base}/", "priority": "1.0"},
-            {"loc": f"{base}/counselors", "priority": "0.9"},
-            {"loc": f"{base}/plans", "priority": "0.7"},
+            {"loc": f"{base}/", "priority": "1.0", "changefreq": "daily"},
+            {"loc": f"{base}/moshaverin", "priority": "0.9", "changefreq": "daily"},
+            {"loc": f"{base}/services", "priority": "0.8", "changefreq": "weekly"},
+            {"loc": f"{base}/plans", "priority": "0.8", "changefreq": "weekly"},
+            {"loc": f"{base}/aboutus", "priority": "0.7", "changefreq": "monthly"},
+            {"loc": f"{base}/contactus", "priority": "0.7", "changefreq": "monthly"},
+            {"loc": f"{base}/terms", "priority": "0.5", "changefreq": "yearly"},
+            {"loc": f"{base}/privacy", "priority": "0.5", "changefreq": "yearly"},
         ]
         counselors = Counselor.objects.filter(is_verified=True, is_purged=False)
         for c in counselors:
-            urls.append({"loc": f"{base}/CounselorProfile/{c.slug}", "priority": "0.8"})
+            slug_val = c.slug or c.id
+            urls.append({"loc": f"{base}/counselor/{slug_val}", "priority": "0.8", "changefreq": "weekly"})
 
         xml = ['<?xml version="1.0" encoding="UTF-8"?>',
                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
         for u in urls:
-            xml.append(f'<url><loc>{u["loc"]}</loc><priority>{u["priority"]}</priority></url>')
+            cf = f'<changefreq>{u["changefreq"]}</changefreq>' if "changefreq" in u else ""
+            xml.append(f'<url><loc>{u["loc"]}</loc>{cf}<priority>{u["priority"]}</priority></url>')
         xml.append('</urlset>')
 
         return HttpResponse("\n".join(xml), content_type="application/xml")

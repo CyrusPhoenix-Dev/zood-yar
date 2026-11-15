@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { Phone, Mail, MapPin, Send } from "lucide-react";
+import { Phone, Mail, MapPin, Send, Hash } from "lucide-react";
 import "../styles/ContactSection.css";
 
 const contactInfo = [
-  { icon: Phone, label: "تلفن تماس", value: "09929542476" },
-  { icon: Mail, label: "ایمیل", value: "korosh.ardestani.289@gmail.com" },
-  { icon: MapPin, label: "آدرس", value: "مشهد راهنمایی 2 پلاک 110 زنگ اول طبقه همکف" },
+  { icon: Phone, label: "تلفن تماس", value: "09929542476", isTel: true },
+  { icon: Mail, label: "ایمیل", value: "korosh.ardestani.289@gmail.com", isMail: true },
+  {
+    icon: MapPin,
+    label: "آدرس پستی (مطابق اینماد)",
+    value: "استان : خراسان رضوی - شهرستان : مشهد - بخش : مرکزی - شهر : مشهد - محله : لشکر - خیابان شهید فلاحی 8 - خیابان شهیدهاشمی مهنه4 [شهیدفلاحی8/7] - ساحل - پلاک : -40.0 - طبقه : 4 - واحد : 7",
+  },
+  { icon: Hash, label: "کد پستی", value: "9184176651", isLtr: true },
 ];
 
 function ContactSection() {
@@ -50,14 +55,24 @@ function ContactSection() {
           </p>
 
           <ul className="contact-section__list">
-            {contactInfo.map(({ icon: Icon, label, value }, index) => (
+            {contactInfo.map(({ icon: Icon, label, value, isTel, isMail, isLtr }, index) => (
               <li className="contact-section__list-item" key={index}>
                 <span className="contact-section__icon-wrap">
                   <Icon size={18} />
                 </span>
                 <span className="contact-section__list-text">
                   <span className="contact-section__list-label">{label}</span>
-                  <span className="contact-section__list-value">{value}</span>
+                  {isTel ? (
+                    <a href={`tel:${value}`} className="contact-section__list-link" dir="ltr">
+                      {value}
+                    </a>
+                  ) : isMail ? (
+                    <a href={`mailto:${value}`} className="contact-section__list-link" dir="ltr">
+                      {value}
+                    </a>
+                  ) : (
+                    <span className="contact-section__list-value" dir={isLtr ? "ltr" : undefined}>{value}</span>
+                  )}
                 </span>
               </li>
             ))}
