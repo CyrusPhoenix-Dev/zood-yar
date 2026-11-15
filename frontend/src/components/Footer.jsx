@@ -86,7 +86,6 @@ function Footer() {
                 <a
                   referrerPolicy="origin"
                   target="_blank"
-                  rel="noopener noreferrer"
                   href="https://trustseal.enamad.ir/?id=7666369&Code=aoEPO2fCDflRRPtfEsHO18b8Q1q2TcLK"
                   aria-label="نماد اعتماد الکترونیکی اینماد"
                 >
